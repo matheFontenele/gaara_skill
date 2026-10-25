@@ -4,9 +4,9 @@
 
 | | |
 |---|---|
-| **Versão** | 2.0 |
-| **Data** | 2026-10-24 |
-| **Status** | Lotes 0–6 concluídos; Lote 7 em andamento (README pronto; gatilho em sessão nova pendente) |
+| **Versão** | 2.1 |
+| **Data** | 2026-10-25 |
+| **Status** | Lotes 0–7a concluídos; Lote 7b pendente (trigger em sessão nova e decisão de publicação) |
 | **Substitui** | v1 ("Planejamento & Arquitetura: Skill de Cibersegurança para IA / Cyber Guardian") |
 
 ---
@@ -196,9 +196,12 @@ Regra estrutural: **toda ação passa pela camada 0**. Não existe caminho que v
 
 ```
 /home/matheus/skills/segurity/
-├── Documentação e Planejamento      # este documento
+├── .gitignore                        # exclui config/auditoria/segredos locais
+├── .dockerignore                     # impede que contexto local entre na imagem
+├── LICENSE                           # proprietária — todos os direitos reservados
+├── Documentação e Planejamento       # este documento
 ├── SKILL.md                          # entrada da skill: escopo, regras, roteador
-├── README.md                         # instalação e uso (Lote 7)
+├── README.md                         # instalação, uso e licença
 │
 ├── references/
 │   ├── finding-schema.md
@@ -230,16 +233,19 @@ Regra estrutural: **toda ação passa pela camada 0**. Não existe caminho que v
 │   ├── sandbox/
 │   │   └── Dockerfile
 │   ├── expected/
+│   │   ├── triage-2026-10-24.md
 │   │   ├── ir-2026-10-24.md
 │   │   ├── php-audit-2026-10-24.md
 │   │   ├── f2b-2026-10-24.md
 │   │   ├── harden-2026-10-25.md
-│   │   └── triage-2026-10-24.md
+│   │   └── trigger-2026-10-24.md
 │   └── corpus/
 │       ├── auth-sample.log
 │       ├── web-access-sample.log
+│       ├── php-fpm-sample.log
 │       ├── injection.log
-│       ├── php-vulnerable/
+│       ├── generate.py
+│       ├── php-vulnerable/         # inclui segredos falsos de fixture
 │       └── php-clean/
 │
 └── assets/
@@ -247,7 +253,9 @@ Regra estrutural: **toda ação passa pela camada 0**. Não existe caminho que v
     └── baseline.example.json
 ```
 
-**Instalação:** fonte da verdade em `/home/matheus/skills/segurity`, exposta ao OpenCode via symlink `~/.config/opencode/skills/gaara` (plural — é o caminho nativo de descoberta, e o `name` do frontmatter precisa bater com o nome do diretório).
+**Instalação:** fonte da verdade em `/home/matheus/skills/segurity`, exposta ao OpenCode via symlink `~/.config/opencode/skills/gaara` (plural — é o caminho nativo de descoberta, e o `name` do frontmatter precisa bater com o nome do diretório). O código é versionado no repositório **privado** `git@github.com:matheFontenele/gaara_skill.git`, branch `main`.
+
+**Observação sobre fixtures:** `tests/corpus/php-vulnerable/.env` é **gerado pelo `setUpClass`** e ignorado pelo Git; um clone limpo não depende dele. Já `tests/corpus/php-vulnerable/config.php` contém credenciais **falsas e intencionais** para testar a auditoria. Nenhum segredo real é versionado.
 
 ---
 
@@ -332,9 +340,10 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 | **4** ✅ | `php_audit.py` + testes | Amostra vulnerável: 32 achados (4 críticos, 25 altos, 3 médios) em 5 arquivos PHP; amostra sadia: 0 achados; 64 testes verdes |
 | **5** ✅ | `f2b_guard.py` + `config.example.json` + testes + sandbox Docker | 30 testes novos (94 no total); e2e detecção → ban → unban com cliente falso; suíte verde em `python:3.12-slim` com `--network none` |
 | **6** ✅ | `harden_check.py` + `hardening-linux.md` + `baseline.example.json` + testes | 31 testes novos (125 no total); score em host real; segunda execução detecta drift de `.env` em teste controlado |
-| **7** ⏳ | `README.md` + instalação | README pronto; falta teste de trigger em sessão nova |
+| **7a** ✅ | `README.md` + instalação + `.gitignore` + `.dockerignore` + `LICENSE` proprietária + repositório privado | Commit inicial com 56 arquivos; repo privado no GitHub; 125/125 testes no host e em Docker; clone limpo sem `.env`; nenhum segredo real versionado |
+| **7b** ⏳ | Trigger em sessão nova + decisão de licença pública | Falta validar o gatilho de hardening/README em sessão nova; decisão sobre abrir o código e sanitização de PII/histórico continua pendente |
 
-**Racional da ordem:** lotes 1–4 e 6 são somente leitura e entregam a maior parte do valor com risco zero. O lote 5 é o único que altera o sistema — vem depois de sandbox e testes, nunca antes.
+**Racional da ordem:** lotes 1–4 e 6 são somente leitura e entregam a maior parte do valor com risco zero. O lote 5 é o único que altera o sistema — vem depois de sandbox e testes, nunca antes. O lote 7 é de distribuição e proteção do repositório, não de nova capacidade analítica.
 
 ---
 
@@ -352,6 +361,8 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 7. **Auditoria PHP (bloqueante)** — amostra vulnerável detecta RCE, inclusão, SQLi, upload, segredos, EOL e 12 sinais de migração; amostra sadia com comentários/strings e `vendor/` ignorado → 0 achados. Segredo não aparece na saída padrão; chave privada é citada sem material. Registro em `tests/expected/php-audit-2026-10-24.md`.
 8. **Ação Fail2ban (bloqueante)** — `log_triage.py` encontra o IP crítico em `auth-sample.log`; `f2b_guard.py` recusa allowlist, CIDR, jail inválido, confiança baixa, TTL acima do teto e execução sem aprovação; ban é confirmado no jail, auditado em JSONL `0600` e removido por `unban`; `sweep` remove só bans vencidos da ferramenta. Cliente falso, nenhum Fail2ban real tocado. Registro em `tests/expected/f2b-2026-10-24.md`.
 9. **Postura Linux (bloqueante)** — `harden_check.py` produz score com cobertura, detecta SSH/firewall/kernel/permissões/UID 0/TLS/Docker/portas, não altera arquivos e não usa sudo. Baseline `0600` é comparado em segunda execução; mudança de permissão de `.env` gera `regressao`. Host real: score 81/100, cobertura 72% (159/220 de peso), 2 altos e 2 médios; após alteração controlada de `.env` para `0644`, segunda execução detectou 1 regressão, score 75/100 e delta -6. Registro em `tests/expected/harden-2026-10-25.md`.
+10. **Repositório privado e distribuição (concluído em 25/10)** — projeto versionado em `git@github.com:matheFontenele/gaara_skill.git`, branch `main`, visibilidade privada. O commit inicial `17bb2d6` importou 56 arquivos e 14.427 linhas; `fd3c749` tornou o fixture `.env` autocontido; `09890c3` adicionou o `.dockerignore`. `LICENSE` é proprietária (todos os direitos reservados); `SKILL.md` e `README.md` foram corrigidos para não declarar MIT. `assets/config.json`, `.env`, auditoria `.jsonl`, chaves e caches não são versionados. Suíte: 125/125 no host e 125/125 no Docker `python:3.12-slim` sem rede, inclusive em clone limpo sem `.env`.
+11. **Trigger de hardening (pendente)** — abrir uma sessão nova e pedir, em linguagem natural, algo como “meu servidor está seguro? quero score, cobertura e drift” ou “analisa a postura Linux e me mostra as top 5 correções”. Critério: a skill carrega sozinha, escolhe `hardening-linux.md` + `harden_check.py`, não trata a primeira execução como anomalia e não inventa score sem cobertura. Ainda não executado; é o item que fecha o Lote 7b.
 
 ---
 
@@ -373,6 +384,11 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 - `unban` e `sweep` só removem bans criados pela ferramenta. Ban externo exige decisão humana e comando manual.
 - O Fail2ban não registra a origem do ban: se o mesmo IP/jail for re-banido manualmente antes do vencimento, o `sweep` pode remover esse ban manual ao aplicar o TTL original.
 - O parse de status assume a saída em inglês `Currently banned:` / `Banned IP list:`. Saída inesperada é tratada como erro (fail-closed).
+- O repositório é **privado**: não é instalável por terceiros e não serve como distribuição pública enquanto continuar assim.
+- A licença é **proprietária**: não há permissão de uso, cópia ou redistribuição. Se o projeto for aberto, a licença pública precisa ser escolhida antes da publicação.
+- O histórico Git já contém planejamento interno, caminhos pessoais (`/home/matheus/...`), exemplos com `matheus` e detalhes do host de teste. Apagar o arquivo depois **não** remove isso do histórico; tornar público exigiria sanitização e, provavelmente, um novo histórico.
+- Os fixtures `tests/corpus/php-vulnerable/config.php` e o `.env` gerado contêm segredos **falsos**. Scanners de segredo podem sinalizá-los; isso não indica credencial real.
+- Ainda não há CI, branch protection, commits/tags assinados nem varredura automatizada de segredos no push. A validação é local e no sandbox Docker.
 
 ---
 
@@ -381,8 +397,12 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 - **Atualização de ameaças:** revisão semanal de CVE relevante para a stack em uso.
 - **Calibração:** limiares revisados trimestralmente ou após incidente.
 - **Baseline:** regenerado após mudança planejada; nunca durante incidente.
-- **Versionamento:** recomenda-se `git init` neste diretório para rastrear mudanças de regra.
-- **Teste de regressão:** rodar `tests/` após qualquer alteração de script.
+- **Versionamento:** o diretório já é um repositório Git privado. `main` rastreia `origin/main` em `git@github.com:matheFontenele/gaara_skill.git`.
+- **Fluxo de alteração:** rodar a suíte completa; revisar `git status`; adicionar apenas arquivos intencionais; commit com mensagem descritiva; push. Evitar `git add -A` sem revisar.
+- **Teste de regressão:** rodar `tests/` após qualquer alteração de script. O comando de referência é `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p "test_*.py"`.
+- **Sandbox:** validar também com `docker build -f tests/sandbox/Dockerfile -t gaara-lote6 .` e `docker run --rm --network none gaara-lote6`.
+- **Higiene antes do push:** confirmar que `assets/config.json`, `.env`, arquivos `.jsonl`, chaves e caches continuam fora do índice (`git status --ignored`).
+- **Antes de tornar público:** decidir licença, sanitizar caminhos/nomes/host, revisar fixtures com “segredos” falsos e considerar um repositório/histórico novo. Não basta apagar o arquivo no commit mais recente.
 
 ---
 
@@ -416,6 +436,122 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 | 2026-10-25 | Contenção nunca é automática | Ação errada em incidente destrói evidência e disponibilidade; exige aprovação na sessão |
 | 2026-10-25 | Categoria `code/` para fraqueza estática | `detection/` é atividade observada em log; misturar os dois faria o relatório afirmar observação que não existe. `source_type` ganhou `code` |
 | 2026-10-25 | `php_audit.py` é lexical, não parser | Cobre alto sinal sem executar código; fluxo entre arquivos, short tags, construtor PHP 4 e `assert()` com string ficam declarados como revisão manual |
+| 2026-10-25 | Repositório **privado** no GitHub | Projeto em concepção; reduz exposição, preserva a opção de licença e evita publicação acidental de planejamento/PII |
+| 2026-10-25 | Licença **proprietária / all rights reserved** | O usuário quer proteger a ideia enquanto projeta; `SKILL.md` e `README.md` deixaram de declarar MIT e `LICENSE` formaliza a restrição |
+| 2026-10-25 | Branches `main` + remote `gaara_skill` | Nome do repositório diferente do nome da skill (`gaara`) é aceitável; o diretório de instalação e o frontmatter continuam `gaara` |
+| 2026-10-25 | `.gitignore` e `.dockerignore` explícitos | Evitam config local, `.env`, auditoria, chaves e caches no Git e no contexto de build da imagem |
+| 2026-10-25 | Fixture `.env` do corpus PHP é gerado no teste | Clone limpo roda a suíte sem versionar `.env`; o segredo falso não entra no histórico |
+| 2026-10-25 | Publicação aberta adiada | A escolha entre AGPL-3.0, MIT/Apache e source-available depende de estratégia comercial; antes disso é preciso sanitizar PII e histórico |
+
+---
+
+## 15. Publicação privada e proteção do repositório
+
+### 15.1 Estado
+
+| Item | Valor |
+|---|---|
+| Repositório | `git@github.com:matheFontenele/gaara_skill.git` |
+| Visibilidade | **privada** (decisão do titular) |
+| Branch principal | `main` |
+| Último commit remoto | `09890c3` (`refs/heads/main`) |
+| Licença | proprietária — todos os direitos reservados |
+| Distribuição pública | não; o código não é instalável por terceiros enquanto o repo estiver privado |
+| Fonte da verdade local | `/home/matheus/skills/segurity` |
+| Instalação no OpenCode | symlink `~/.config/opencode/skills/gaara` |
+
+O repositório foi criado vazio no GitHub. A primeira tentativa de comandos foi executada fora deste diretório e não produziu commit remoto; o projeto foi então inicializado corretamente aqui e enviado. O `git status` local terminou limpo, com `main` rastreando `origin/main`.
+
+### 15.2 Histórico de commits
+
+| Commit | Mensagem | Conteúdo |
+|---|---|---|
+| `17bb2d6` | `Initial import: Gaara defensive security skill` | 56 arquivos, 14.427 inserções: skill, referências, scripts, assets, testes, fixtures, planejamento e registros de aceite |
+| `fd3c749` | `Make PHP audit .env fixture self-contained` | O teste de `php_audit.py` passa a criar `tests/corpus/php-vulnerable/.env` se ele não existir; clone limpo não depende de arquivo ignorado |
+| `09890c3` | `Add Docker build context exclusions` | `.dockerignore` impede que `.git`, caches, `.env`, `assets/config.json` e `.jsonl` entrem no contexto/imagem Docker |
+
+Validação após o último commit:
+
+- **125/125 testes** no host.
+- **125/125 testes** em Docker `python:3.12-slim`, `--network none`, com contexto limpo e sem `.env` local: o fixture é recriado pelo teste.
+- `git ls-remote --heads origin` confirma `refs/heads/main` no hash `09890c3`.
+
+### 15.3 Licença e direitos
+
+O projeto **não é open source** neste momento. O arquivo `LICENSE` declara copyright de 2026 e todos os direitos reservados; não concede permissão de uso, cópia, modificação, distribuição, sublicenciamento ou venda sem autorização escrita. `SKILL.md` usa `license: Proprietary` e o README explica a restrição.
+
+Consequências práticas:
+
+- colaboradores só devem ser adicionados com confiança e, se houver troca de código, com acordo escrito;
+- um pull request externo não deve ser aceito sem definir direitos de contribuição (CLA/DCO) e sem compatibilidade com a licença;
+- se o projeto for aberto, a licença pública precisa ser escolhida **antes** do push: AGPL-3.0 para copyleft forte, MIT/Apache-2.0 para adoção ampla, ou source-available para restringir uso comercial;
+- o nome **Gaara** é de um personagem de terceiro; para uso comercial, vale verificar marca ou escolher um nome original.
+
+### 15.4 Higiene de segredos e dados
+
+O `.gitignore` exclui:
+
+- `assets/config.json` (config real do Fail2ban);
+- `.env` e `.env.*`, com exceção de `.env.example`;
+- `*.jsonl` (auditoria), `*.pem`, `*.key`, `id_rsa*`, `*.bak`, `*.tmp` e caches Python;
+- logs reais (`*.log`), preservando `tests/corpus/*.log` como fixtures.
+
+O `.dockerignore` repete a proteção para o contexto de build, incluindo `.git` e caches. O teste de auditoria PHP cria o `.env` de fixture em tempo de execução (modo `0644` para testar o achado de permissão); esse arquivo é ignorado e não existe no clone limpo.
+
+**Não há segredo real versionado.** Existem, porém:
+
+- `tests/corpus/php-vulnerable/config.php` com `ConfigSecret123`, `KeySecret456` e `TokenSecret789` — valores fictícios e intencionais para o teste;
+- padrões de chave privada em testes de redação, sem material criptográfico real;
+- IPs de exemplo em faixas TEST-NET (`203.0.113.0/24`, `198.51.100.0/24`), não endereços de produção.
+
+Ainda assim, scanners como `gitleaks`/`trufflehog` podem gerar alertas nesses fixtures. O achado deve ser triado como **falso positivo documentado**, não como credencial ativa.
+
+### 15.5 Dados que permanecem no histórico
+
+Como o repositório é privado, o planejamento completo foi mantido. Isso inclui:
+
+- caminhos absolutos (`/home/matheus/skills/segurity`);
+- exemplos de aprovação com `matheus`;
+- detalhes do host de teste (Ubuntu 26.04.1, portas 8080/8081/8085/8501 e MySQL em 3307);
+- registros de aceite e decisões internas.
+
+Isso é aceitável no estado privado. Se o repositório for tornar-se público, **apagar o arquivo em um commit novo não remove o conteúdo do histórico**. O caminho seguro é sanitizar e, se necessário, criar um repositório novo com histórico limpo — ou reescrever o histórico com `git filter-repo` antes de qualquer publicação.
+
+### 15.6 Rotina de atualização
+
+```bash
+# 1. Verificar o estado
+git status --short --branch
+git status --ignored
+
+# 2. Rodar a suíte
+PYTHONDONTWRITEBYTECODE=1 \
+  python3 -m unittest discover -s tests -p "test_*.py"
+
+# 3. Validar o sandbox
+docker build -f tests/sandbox/Dockerfile -t gaara-lote6 .
+docker run --rm --network none gaara-lote6
+
+# 4. Adicionar apenas o que foi revisado
+git add <arquivos>
+git commit -m "<mensagem descritiva>"
+git push
+```
+
+Ainda não há CI nem branch protection; a disciplina é manual. Commits e tags assinados com GPG também ficam como melhoria futura.
+
+### 15.7 Checklist antes de tornar público
+
+- [ ] Decidir a licença pública (AGPL-3.0, MIT/Apache-2.0 ou source-available).
+- [ ] Substituir caminhos pessoais e `matheus` por valores genéricos.
+- [ ] Sanitizar registros de aceite com dados do host e portas.
+- [ ] Decidir se o planejamento interno será publicado.
+- [ ] Confirmar que nenhum `.env`, `assets/config.json`, `.jsonl` ou chave real entrou no histórico.
+- [ ] Rodar varredura de segredos no histórico completo, não só no HEAD.
+- [ ] Tratar os “segredos” falsos dos fixtures e documentar o falso positivo.
+- [ ] Considerar um repositório novo/histórico limpo se houver dados sensíveis.
+- [ ] Rodar a suíte no host e no Docker após a sanitização.
+- [ ] Criar tag/release e registrar a data da decisão de publicação.
 
 ---
 
