@@ -4,7 +4,17 @@ Gaara é uma skill de **segurança defensiva portátil entre harnesses de IA**. 
 
 O princípio é simples: **observar, correlacionar e recomendar**. A skill só altera o sistema quando você autoriza explicitamente, na mesma sessão, com escopo mínimo, TTL, auditoria e rollback.
 
-> Status atual: lotes 0–7a concluídos — skill, testes, README, instalação e repositório privado. O lote 7b (trigger em sessão nova e decisão de publicação) está pendente. A instalação multi-harness está documentada e é manual; `adapters/`, `install.py` e os testes de portabilidade ainda são planejados.
+> **Estado:** beta fechado. O repositório continua **privado** enquanto os testes com usuários convidados acontecem. Este README já está no formato de distribuição aberta: clone, instalação por harness, checklist de teste e canal de feedback. A licença pública será definida antes da abertura; veja a seção 12.
+>
+> A instalação multi-harness é manual nesta versão; `adapters/`, `install.py` e os testes de portabilidade ainda são planejados.
+
+| Item | Estado |
+|---|---|
+| Versão | 2.3 |
+| Testes | 125/125 no host e no sandbox Docker |
+| Harnesses documentados | OpenCode, Hermes Agent, Codex, Claude Code, Gemini/Antigravity e agentes genéricos |
+| Distribuição | beta fechado; acesso por convite |
+| Licença | proprietária durante o beta; licença pública a definir |
 
 ---
 
@@ -28,7 +38,8 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 ## 2. Requisitos
 
 - Um harness que consuma `SKILL.md` — OpenCode, Hermes Agent, Codex, Claude Code ou Gemini/Antigravity — **ou** um agente genérico com leitura de arquivos e, opcionalmente, execução de comandos.
-- Git, para clonar e atualizar o repositório privado.
+- Git, para clonar e atualizar o repositório.
+- Acesso ao repositório: público após a abertura; durante o beta fechado, acesso por convite (SSH ou token).
 - Python **3.10+** (recomendado 3.12+); todos os scripts de análise usam apenas a biblioteca padrão.
 - Bash, para `scripts/ir_triage.sh`.
 - Opcional: Fail2ban, Docker, `sshd`, `ufw`, `nft`, `iptables` e `ss`, conforme o que você quer auditar.
@@ -42,20 +53,22 @@ A rotina de incidente e a postura de host pressupõem Linux. Triagem de logs e a
 
 ### 3.1 Baixar o repositório
 
-Em outra máquina, o primeiro passo é clonar o repositório **privado**. Use uma chave SSH configurada no GitHub ou um token de acesso pessoal via HTTPS.
+Em outra máquina, o primeiro passo é clonar o repositório. O comando muda conforme o estado de acesso:
 
 ```bash
-# SSH
+# Enquanto o beta estiver fechado (repositório privado):
 git clone git@github.com:matheFontenele/gaara_skill.git
 cd gaara_skill
 
-# ou HTTPS com token
+# Quando o repositório estiver público:
 # git clone https://github.com/matheFontenele/gaara_skill.git
 # cd gaara_skill
 
 export GAARA_REPO="$PWD"
 printf 'Repositório em: %s\n' "$GAARA_REPO"
 ```
+
+Testadores convidados recebem acesso ao repositório privado pelo mantenedor. Não redistribua o código durante o beta; a licença pública só vale depois da abertura formal.
 
 O diretório clonado pode ter qualquer nome e ficar em qualquer caminho; os comandos abaixo usam `$GAARA_REPO`. Se você abrir outro terminal, redefina a variável ou repita o `cd` no clone.
 
@@ -549,14 +562,124 @@ rm -f assets/config.json
 
 ---
 
-## 11. Licença
+## 11. Beta fechado e testadores
 
-**Proprietária — todos os direitos reservados.**
+### 11.1 Objetivo
 
-Este repositório é privado e não é open source. Nenhuma permissão de uso,
-cópia, modificação, distribuição ou sublicenciamento é concedida sem
-autorização prévia por escrito do titular. Consulte o arquivo `LICENSE` para
-os termos completos.
+O beta fechado existe para validar três coisas antes de qualquer abertura:
 
-Se o projeto for aberto no futuro, a licença será escolhida e registrada antes
-da publicação; nada neste README concede direitos antecipados.
+1. a skill carrega e é escolhida em linguagem natural nos harnesses reais;
+2. os scripts produzem o resultado esperado sem root e sem rede;
+3. nenhum dado sensível vaza em relatório, auditoria ou feedback.
+
+O repositório continua privado durante essa fase. O README já descreve a instalação pública para que a transição não exija reescrever os comandos.
+
+### 11.2 Antes de começar
+
+- Use uma **VM, container ou host descartável**. Não teste `f2b_guard.py --execute` em produção.
+- Clone o repositório inteiro para rodar a suíte; para uso normal, instale apenas o runtime (`SKILL.md`, `references/`, `scripts/`, `assets/`).
+- Registre o commit testado:
+
+```bash
+cd "$GAARA_REPO"
+git rev-parse --short HEAD
+python3 --version
+```
+
+- Leia a seção 1 (escopo) e a seção 6 (segurança e limites). O Gaara é defensivo; não é pentest.
+
+### 11.3 Checklist de teste
+
+- [ ] A skill aparece no harness escolhido (OpenCode ou Hermes).
+- [ ] Um pedido em linguagem natural escolhe a rotina correta.
+- [ ] `python3 -m unittest discover -s tests -p "test_*.py"` passa.
+- [ ] `log_triage.py` roda em `tests/corpus/auth-sample.log` e não mostra segredo.
+- [ ] `php_audit.py` roda em `tests/corpus/php-vulnerable` e em `tests/corpus/php-clean`.
+- [ ] `harden_check.py --format md` roda no host de teste; sem root, mostra `unknown`.
+- [ ] `f2b_guard.py check` funciona se houver Fail2ban; `--execute` fica fora do teste.
+- [ ] Sem shell, o agente entrega o comando e não inventa saída.
+- [ ] O relatório final é compreensível para quem não é especialista.
+
+Exemplos:
+
+```bash
+cd "$GAARA_REPO"
+
+python3 -m unittest discover -s tests -p "test_*.py"
+python3 scripts/log_triage.py tests/corpus/auth-sample.log --format md
+python3 scripts/php_audit.py tests/corpus/php-vulnerable --format md
+python3 scripts/harden_check.py --format md
+```
+
+No Hermes:
+
+```bash
+hermes skills list | grep -i gaara
+hermes chat -q "/gaara analisa tests/corpus/auth-sample.log e me diz se há ataque"
+```
+
+### 11.4 O que não fazer
+
+- Não rodar `f2b_guard.py --execute` em produção durante o beta.
+- Não usar a skill para pentest, exploit, scan em terceiros ou bypass.
+- Não testar em Windows/Active Directory; está fora de escopo.
+- Não tratar score de hardening como certificação.
+- Não afirmar que um comando foi executado sem ter a saída da ferramenta.
+- Não compartilhar logs brutos com dados de clientes, credenciais ou chaves.
+
+### 11.5 Dados e privacidade
+
+Logs de autenticação e access logs podem conter IP, e-mail, URL, token, cookie e dado pessoal. A redação do Gaara é **melhor esforço**, não uma garantia de anonimização.
+
+Ao testar:
+
+- prefira as fixtures de `tests/corpus/`;
+- remova `Authorization`, `Cookie`, tokens, chaves privadas, `.env` e conteúdo de `/etc/shadow`;
+- compartilhe apenas o trecho necessário, não o arquivo inteiro;
+- trate o feedback como dado sensível até revisar.
+
+Se o projeto for aberto, issues e discussões serão públicas. Nunca cole segredo em issue. Para vulnerabilidade no próprio Gaara, use o canal privado combinado com o mantenedor.
+
+### 11.6 Como reportar
+
+Inclua:
+
+- commit (`git rev-parse --short HEAD`);
+- harness e modelo usado (OpenCode, Hermes, Codex, Claude etc.);
+- sistema e versão do Python;
+- comando exato;
+- resultado esperado e resultado observado;
+- trecho de saída **sanitizado**;
+- se possível, o fixture ou log mínimo que reproduz.
+
+Não inclua credenciais, chaves, `.env`, dados de cliente ou logs brutos.
+
+### 11.7 Contribuições
+
+Durante o beta fechado, contribuições externas devem ser combinadas com o mantenedor antes de um pull request. A licença pública e a política de contribuição (CLA/DCO) serão definidas antes da abertura.
+
+Critérios para qualquer contribuição futura:
+
+- suíte verde;
+- nenhum segredo real em código, teste ou fixture;
+- nenhum código ofensivo ou scan em terceiros;
+- documentação em português e exemplos reproduzíveis;
+- mudança de escopo discutida antes da implementação.
+
+---
+
+## 12. Licença
+
+**Beta fechado — proprietária. Todos os direitos reservados.**
+
+Enquanto o repositório estiver privado, nenhuma permissão de uso, cópia,
+modificação, distribuição ou sublicenciamento é concedida sem autorização
+prévia por escrito do titular. Consulte o arquivo `LICENSE` para os termos
+completos.
+
+Testadores convidados recebem autorização limitada para instalar e testar o
+Gaara no contexto combinado com o mantenedor. Essa autorização não inclui
+redistribuição, publicação, uso comercial ou criação de fork público.
+
+Antes da abertura, o arquivo `LICENSE` e esta seção serão substituídos pela
+licença pública escolhida. Nada neste README concede direitos antecipados.
