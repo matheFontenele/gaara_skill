@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Configuração e auditoria locais
+assets/config.json
+*.jsonl
+.env
+.env.*
+!.env.example
+
+# Chaves e artefatos locais
+*.pem
+*.key
+id_rsa*
+*.bak
+*.tmp
+
+# Logs reais; os logs de corpus são versionados
+*.log
+!tests/corpus/*.log
+
+# Sistema/editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

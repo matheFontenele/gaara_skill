@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "client": "fail2ban-client",
+  "socket": null,
+  "timeout": 10,
+  "allowed_jails": [
+    "sshd",
+    "nginx-http-auth",
+    "nginx-limit-req",
+    "postfix-sasl"
+  ],
+  "allowlist": [
+    "127.0.0.0/8",
+    "::1/128",
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "100.64.0.0/10",
+    "169.254.0.0/16",
+    "fe80::/10",
+    "224.0.0.0/4",
+    "ff00::/8",
+    "fc00::/7"
+  ],
+  "protected_ips": [],
+  "operator_ips": [],
+  "ttl": {
+    "medio": 3600,
+    "alto": 86400,
+    "max": 259200
+  },
+  "max_sweep": 10,
+  "audit_path": "/var/log/gaara/audit.jsonl"
+}
