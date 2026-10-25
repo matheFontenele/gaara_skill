@@ -627,7 +627,7 @@ Instalação local, adequada ao repositório privado:
 
 ```bash
 mkdir -p ~/.hermes/skills/security
-ln -s /home/matheus/skills/segurity ~/.hermes/skills/security/gaara
+ln -s /caminho/para/gaara_skill ~/.hermes/skills/security/gaara
 hermes skills list | grep -i gaara
 ```
 
@@ -663,6 +663,8 @@ Cuidados específicos:
 | Gemini/Antigravity | Depende da versão | `~/.gemini/skills/gaara` | Se não houver suporte, usar ponteiro `GEMINI.md` |
 | Cursor/Cline | Não nativamente | regra do projeto | Ponteiro para `SKILL.md`, referências e scripts |
 | Chat/API genérica | Não | prompt + anexos | Sem filesystem, entregar comandos para execução humana |
+
+Em outra máquina, `/home/matheus/skills/segurity` não existe. O procedimento é clonar o repositório privado e usar o diretório do clone como raiz; o README usa `GAARA_REPO` para evitar caminho fixo. A cópia em `.zip` funciona para instalação, mas não para `git pull`.
 
 ### 16.5 Contrato de capacidades
 

@@ -28,6 +28,7 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 ## 2. Requisitos
 
 - Um harness que consuma `SKILL.md` — OpenCode, Hermes Agent, Codex, Claude Code ou Gemini/Antigravity — **ou** um agente genérico com leitura de arquivos e, opcionalmente, execução de comandos.
+- Git, para clonar e atualizar o repositório privado.
 - Python **3.10+** (recomendado 3.12+); todos os scripts de análise usam apenas a biblioteca padrão.
 - Bash, para `scripts/ir_triage.sh`.
 - Opcional: Fail2ban, Docker, `sshd`, `ufw`, `nft`, `iptables` e `ss`, conforme o que você quer auditar.
@@ -39,7 +40,28 @@ A rotina de incidente e a postura de host pressupõem Linux. Triagem de logs e a
 
 ## 3. Instalação
 
-### 3.1 Onde instalar
+### 3.1 Baixar o repositório
+
+Em outra máquina, o primeiro passo é clonar o repositório **privado**. Use uma chave SSH configurada no GitHub ou um token de acesso pessoal via HTTPS.
+
+```bash
+# SSH
+git clone git@github.com:matheFontenele/gaara_skill.git
+cd gaara_skill
+
+# ou HTTPS com token
+# git clone https://github.com/matheFontenele/gaara_skill.git
+# cd gaara_skill
+
+export GAARA_REPO="$PWD"
+printf 'Repositório em: %s\n' "$GAARA_REPO"
+```
+
+O diretório clonado pode ter qualquer nome e ficar em qualquer caminho; os comandos abaixo usam `$GAARA_REPO`. Se você abrir outro terminal, redefina a variável ou repita o `cd` no clone.
+
+Se você recebeu um `.zip` em vez do Git, extraia e use o diretório extraído como `$GAARA_REPO`; nesse caso, atualizações não virão por `git pull`.
+
+### 3.2 Onde instalar
 
 O repositório é a própria skill: o arquivo de entrada é `SKILL.md`, e as referências são carregadas sob demanda. Mantenha **uma única fonte de verdade** e aponte cada harness para ela.
 
@@ -57,25 +79,25 @@ Use `cd` na raiz do repositório antes dos comandos. O destino deve terminar em 
 
 Se o destino já existir, remova antes o link antigo (`rm <destino>`) em vez de sobrescrever um diretório real. `ln -s` falha se o caminho já existir.
 
-### 3.2 OpenCode
+### 3.3 OpenCode
 
 ```bash
-cd /home/matheus/skills/segurity
+cd "$GAARA_REPO"
 mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills"
-ln -s "$PWD" "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/gaara"
+ln -s "$GAARA_REPO" "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/gaara"
 readlink -f "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/gaara"
 ```
 
 O último comando deve apontar para a raiz deste repositório. Abra uma sessão nova do OpenCode.
 
-### 3.3 Hermes Agent
+### 3.4 Hermes Agent
 
 O Hermes usa o mesmo padrão `SKILL.md`, com progressive disclosure via `skill_view`. A instalação local é o caminho recomendado porque o repositório é privado.
 
 ```bash
-cd /home/matheus/skills/segurity
+cd "$GAARA_REPO"
 mkdir -p ~/.hermes/skills/security
-ln -s "$PWD" ~/.hermes/skills/security/gaara
+ln -s "$GAARA_REPO" ~/.hermes/skills/security/gaara
 readlink -f ~/.hermes/skills/security/gaara
 hermes skills list | grep -i gaara
 ```
@@ -98,7 +120,7 @@ O Hermes carrega o `SKILL.md` e deve pedir as referências com `skill_view("gaar
 
 ```bash
 mkdir -p ~/.agents/skills
-ln -s /home/matheus/skills/segurity ~/.agents/skills/gaara
+ln -s "$GAARA_REPO" ~/.agents/skills/gaara
 ```
 
 E configure o Hermes:
@@ -113,42 +135,42 @@ skills:
 
 `write_approval: true` é recomendado: o Hermes pode criar e alterar skills, e um symlink para o repositório permitiria que o agente modificasse a fonte. O gate de escrita de skill não substitui a aprovação do Gaara para ações no sistema.
 
-### 3.4 Codex
+### 3.5 Codex
 
 ```bash
-cd /home/matheus/skills/segurity
+cd "$GAARA_REPO"
 mkdir -p ~/.codex/skills
-ln -s "$PWD" ~/.codex/skills/gaara
+ln -s "$GAARA_REPO" ~/.codex/skills/gaara
 ```
 
 O Codex também lê `AGENTS.md` para instruções de projeto, mas isso não é obrigatório para carregar uma skill. O ponto de entrada continua sendo `SKILL.md`.
 
-### 3.5 Claude Code
+### 3.6 Claude Code
 
 Instalação pessoal:
 
 ```bash
-cd /home/matheus/skills/segurity
+cd "$GAARA_REPO"
 mkdir -p ~/.claude/skills
-ln -s "$PWD" ~/.claude/skills/gaara
+ln -s "$GAARA_REPO" ~/.claude/skills/gaara
 ```
 
-Instalação por projeto:
+Instalação por projeto (execute na raiz do projeto que vai usar a skill, não na raiz do clone):
 
 ```bash
 mkdir -p .claude/skills
-ln -s /home/matheus/skills/segurity .claude/skills/gaara
+ln -s "$GAARA_REPO" .claude/skills/gaara
 ```
 
 Abra uma sessão nova e invoque `/gaara` ou peça em linguagem natural.
 
-### 3.6 Gemini/Antigravity e outros harnesses
+### 3.7 Gemini/Antigravity e outros harnesses
 
 Se a versão instalar skills em `~/.gemini/skills`:
 
 ```bash
 mkdir -p ~/.gemini/skills
-ln -s /home/matheus/skills/segurity ~/.gemini/skills/gaara
+ln -s "$GAARA_REPO" ~/.gemini/skills/gaara
 ```
 
 Se a versão só aceitar `GEMINI.md`, crie um ponteiro curto no projeto:
@@ -156,7 +178,7 @@ Se a versão só aceitar `GEMINI.md`, crie um ponteiro curto no projeto:
 ```markdown
 # Gaara
 
-Leia `/home/matheus/skills/segurity/SKILL.md` antes de responder sobre
+Leia `/caminho/para/gaara_skill/SKILL.md` antes de responder sobre
 segurança defensiva. Carregue a referência da rotina em `references/`.
 Scripts ficam em `scripts/`. Não presuma root, shell ou rede.
 ```
@@ -167,11 +189,12 @@ Para **chat/API sem filesystem**, anexe `SKILL.md` e a referência da rotina; en
 
 Esses adaptadores são manuais nesta versão. `AGENTS.md`, `manifest.json`, `references/agent-contract.md`, `adapters/` e `scripts/install.py` estão no plano de portabilidade, mas ainda não existem no repositório.
 
-### 3.7 Cópia e runtime mínimo
+### 3.8 Cópia e runtime mínimo
 
 Se preferir instalação estática, copie apenas o necessário para executar:
 
 ```bash
+cd "$GAARA_REPO"
 DEST="$HOME/.hermes/skills/security/gaara"
 mkdir -p "$DEST"
 cp -a SKILL.md references scripts assets "$DEST/"
@@ -179,9 +202,10 @@ cp -a SKILL.md references scripts assets "$DEST/"
 
 Não copie `tests/`, `Documentação e Planejamento` ou registros de aceite para o runtime de um agente. Isso reduz contexto, evita que o agente leia planejamento interno e impede que os “segredos” falsos das fixtures sejam sinalizados por scanners.
 
-### 3.8 Permissões
+### 3.9 Permissões
 
 ```bash
+cd "$GAARA_REPO"
 chmod +x scripts/*.py scripts/*.sh
 ```
 
@@ -214,17 +238,17 @@ hermes chat -q "/gaara tenho PHP 5.6 exposto; o que faço com o PHP2Shell?"
 Defina o diretório da skill instalada:
 
 ```bash
-# OpenCode
+# Escolha o harness e deixe apenas uma linha ativa:
 GAARA_HOME="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/gaara"
+# GAARA_HOME="$HOME/.hermes/skills/security/gaara"
+# GAARA_HOME="$HOME/.codex/skills/gaara"
+# GAARA_HOME="$HOME/.claude/skills/gaara"
+```
 
-# Hermes
-GAARA_HOME="$HOME/.hermes/skills/security/gaara"
+Se o comando for executado fora do diretório da skill, aponte o config do Fail2ban explicitamente:
 
-# Codex
-GAARA_HOME="$HOME/.codex/skills/gaara"
-
-# Claude Code
-GAARA_HOME="$HOME/.claude/skills/gaara"
+```bash
+export GAARA_F2B_CONFIG="$GAARA_HOME/assets/config.json"
 ```
 
 Triagem de logs:
@@ -280,7 +304,7 @@ python3 "$GAARA_HOME/scripts/f2b_guard.py" sweep
 O `f2b_guard.py` não cria jail nem firewall. Ele opera em um Fail2ban já instalado.
 
 ```bash
-cd /home/matheus/skills/segurity
+cd "$GAARA_REPO"
 cp assets/config.example.json assets/config.json
 chmod 600 assets/config.json
 ```
