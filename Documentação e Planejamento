@@ -4,10 +4,12 @@
 
 | | |
 |---|---|
-| **Versão** | 2.1 |
+| **Versão** | 2.2 |
 | **Data** | 2026-10-25 |
-| **Status** | Lotes 0–7a concluídos; Lote 7b pendente (trigger em sessão nova e decisão de publicação) |
+| **Status** | Lotes 0–7a concluídos; Lote 7b pendente (trigger em sessão nova e decisão de publicação); portabilidade multi-harness documentada, automação pendente |
 | **Substitui** | v1 ("Planejamento & Arquitetura: Skill de Cibersegurança para IA / Cyber Guardian") |
+
+**Revisão 2.2 (2026-10-25):** documenta a portabilidade multi-harness — Hermes Agent como primeiro alvo não-OpenCode, instalação manual, contrato de capacidades, runtime subset, riscos de escrita por agente e o roadmap do Lote 8. O README foi reescrito para cobrir instalação e execução em OpenCode, Hermes, Codex, Claude Code, Gemini/Antigravity, Cursor/Cline e agentes genéricos.
 
 ---
 
@@ -263,9 +265,11 @@ Regra estrutural: **toda ação passa pela camada 0**. Não existe caminho que v
 
 ### 9.1 SKILL.md
 
-- Frontmatter: `name: gaara`, `description` rica em gatilhos, `license`.
+- Frontmatter mínimo: `name: gaara`, `description` rica em gatilhos, `license`.
+- Campos opcionais recomendados para outros harnesses: `version` e `metadata.hermes` (tags/categoria). Ainda não foram adicionados; não são necessários para o carregamento no OpenCode ou no Hermes.
 - Corpo enxuto (~180 linhas): escopo, não-escopo, R1–R10, roteador de intenção, fluxo padrão, padrão de achado, portão de ação, formato de saída.
 - **Não** carrega todas as referências — o roteador indica qual abrir.
+- O mesmo `SKILL.md` é a fonte de verdade para OpenCode, Hermes, Codex e Claude Code; adaptadores não devem duplicar o corpo.
 
 ### 9.2 Referências
 
@@ -342,8 +346,9 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 | **6** ✅ | `harden_check.py` + `hardening-linux.md` + `baseline.example.json` + testes | 31 testes novos (125 no total); score em host real; segunda execução detecta drift de `.env` em teste controlado |
 | **7a** ✅ | `README.md` + instalação + `.gitignore` + `.dockerignore` + `LICENSE` proprietária + repositório privado | Commit inicial com 56 arquivos; repo privado no GitHub; 125/125 testes no host e em Docker; clone limpo sem `.env`; nenhum segredo real versionado |
 | **7b** ⏳ | Trigger em sessão nova + decisão de licença pública | Falta validar o gatilho de hardening/README em sessão nova; decisão sobre abrir o código e sanitização de PII/histórico continua pendente |
+| **8** ⏳ | Portabilidade multi-harness: `AGENTS.md`, `manifest.json`, `agent-contract.md`, `adapters/`, `install.py`, testes de portabilidade | Instalar em OpenCode, Hermes, Codex, Claude Code e genérico; validar gatilhos em pelo menos três harnesses; nenhuma dependência de nome de ferramenta do OpenCode |
 
-**Racional da ordem:** lotes 1–4 e 6 são somente leitura e entregam a maior parte do valor com risco zero. O lote 5 é o único que altera o sistema — vem depois de sandbox e testes, nunca antes. O lote 7 é de distribuição e proteção do repositório, não de nova capacidade analítica.
+**Racional da ordem:** lotes 1–4 e 6 são somente leitura e entregam a maior parte do valor com risco zero. O lote 5 é o único que altera o sistema — vem depois de sandbox e testes, nunca antes. O lote 7 é de distribuição e proteção do repositório. O lote 8 é de portabilidade: o núcleo já é Markdown + stdlib, então o trabalho é adaptar instalação, capacidades e testes, não reescrever a skill.
 
 ---
 
@@ -363,6 +368,7 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 9. **Postura Linux (bloqueante)** — `harden_check.py` produz score com cobertura, detecta SSH/firewall/kernel/permissões/UID 0/TLS/Docker/portas, não altera arquivos e não usa sudo. Baseline `0600` é comparado em segunda execução; mudança de permissão de `.env` gera `regressao`. Host real: score 81/100, cobertura 72% (159/220 de peso), 2 altos e 2 médios; após alteração controlada de `.env` para `0644`, segunda execução detectou 1 regressão, score 75/100 e delta -6. Registro em `tests/expected/harden-2026-10-25.md`.
 10. **Repositório privado e distribuição (concluído em 25/10)** — projeto versionado em `git@github.com:matheFontenele/gaara_skill.git`, branch `main`, visibilidade privada. O commit inicial `17bb2d6` importou 56 arquivos e 14.427 linhas; `fd3c749` tornou o fixture `.env` autocontido; `09890c3` adicionou o `.dockerignore`. `LICENSE` é proprietária (todos os direitos reservados); `SKILL.md` e `README.md` foram corrigidos para não declarar MIT. `assets/config.json`, `.env`, auditoria `.jsonl`, chaves e caches não são versionados. Suíte: 125/125 no host e 125/125 no Docker `python:3.12-slim` sem rede, inclusive em clone limpo sem `.env`.
 11. **Trigger de hardening (pendente)** — abrir uma sessão nova e pedir, em linguagem natural, algo como “meu servidor está seguro? quero score, cobertura e drift” ou “analisa a postura Linux e me mostra as top 5 correções”. Critério: a skill carrega sozinha, escolhe `hardening-linux.md` + `harden_check.py`, não trata a primeira execução como anomalia e não inventa score sem cobertura. Ainda não executado; é o item que fecha o Lote 7b.
+12. **Portabilidade multi-harness (documentação concluída; implementação pendente)** — o README agora cobre instalação manual em OpenCode, Hermes Agent, Codex, Claude Code, Gemini/Antigravity, Cursor/Cline, chat/API e runtime mínimo. Critérios pendentes: `hermes skills list` reconhecer `gaara`; `/gaara` carregar em sessão nova; `skill_view("gaara", "references/...")` funcionar; scripts rodarem via `terminal`; sem root, controles privilegiados virarem `unknown`; nenhuma saída de ferramenta simulada. `AGENTS.md`, `manifest.json`, `references/agent-contract.md`, `adapters/`, `install.py` e testes de portabilidade ainda não existem.
 
 ---
 
@@ -389,6 +395,11 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 - O histórico Git já contém planejamento interno, caminhos pessoais (`/home/matheus/...`), exemplos com `matheus` e detalhes do host de teste. Apagar o arquivo depois **não** remove isso do histórico; tornar público exigiria sanitização e, provavelmente, um novo histórico.
 - Os fixtures `tests/corpus/php-vulnerable/config.php` e o `.env` gerado contêm segredos **falsos**. Scanners de segredo podem sinalizá-los; isso não indica credencial real.
 - Ainda não há CI, branch protection, commits/tags assinados nem varredura automatizada de segredos no push. A validação é local e no sandbox Docker.
+- A portabilidade multi-harness está **documentada e manual**. Não existem `install.py`, `adapters/`, `AGENTS.md`, `manifest.json`, `references/agent-contract.md` nem testes automatizados de portabilidade.
+- A documentação do Hermes confirma suporte a `SKILL.md`, `~/.hermes/skills/`, `skill_view` e `external_dirs`, mas **o teste de fumaça ainda não foi registrado**: falta validar `hermes skills list`, `/gaara`, `skill_view` e execução via `terminal` em sessão nova.
+- Em harnesses que permitem escrita em skills, um symlink para este repositório pode deixar o agente alterar a fonte. O Hermes tem `skills.write_approval`; a alternativa é instalar uma cópia de runtime e manter o repositório somente leitura para o agente.
+- O frontmatter atual não tem `version` nem `metadata.hermes`; a `description` é longa para o padrão de authoring do Hermes. Funciona, mas a descoberta e a apresentação podem ser melhores após teste comparativo.
+- Copiar o repositório inteiro para o harness expõe `tests/`, planejamento e fixtures com segredos falsos. O runtime recomendado inclui apenas `SKILL.md`, `references/`, `scripts/` e `assets/`; essa seleção ainda é manual.
 
 ---
 
@@ -402,6 +413,10 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 - **Teste de regressão:** rodar `tests/` após qualquer alteração de script. O comando de referência é `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p "test_*.py"`.
 - **Sandbox:** validar também com `docker build -f tests/sandbox/Dockerfile -t gaara-lote6 .` e `docker run --rm --network none gaara-lote6`.
 - **Higiene antes do push:** confirmar que `assets/config.json`, `.env`, arquivos `.jsonl`, chaves e caches continuam fora do índice (`git status --ignored`).
+- **Instalação em harness:** usar o mesmo repositório como fonte de verdade e criar um symlink no diretório nativo (`~/.config/opencode/skills/gaara`, `~/.hermes/skills/security/gaara`, `~/.codex/skills/gaara`, `~/.claude/skills/gaara`). Não duplicar `SKILL.md` por harness.
+- **Validação no Hermes:** `hermes skills list | grep -i gaara`; abrir sessão nova; testar `/gaara` e uma frase natural; confirmar `skill_view("gaara", "references/...")`; confirmar que o terminal não é presumido.
+- **Proteção contra escrita do agente:** no Hermes, manter `skills.write_approval: true`; se o harness não tiver gate equivalente, instalar uma cópia de runtime em vez de symlink.
+- **Runtime mínimo:** para outros harnesses, copiar apenas `SKILL.md`, `references/`, `scripts/` e `assets/`; deixar `tests/`, planejamento e registros de aceite fora do diretório carregado.
 - **Antes de tornar público:** decidir licença, sanitizar caminhos/nomes/host, revisar fixtures com “segredos” falsos e considerar um repositório/histórico novo. Não basta apagar o arquivo no commit mais recente.
 
 ---
@@ -442,6 +457,14 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 | 2026-10-25 | `.gitignore` e `.dockerignore` explícitos | Evitam config local, `.env`, auditoria, chaves e caches no Git e no contexto de build da imagem |
 | 2026-10-25 | Fixture `.env` do corpus PHP é gerado no teste | Clone limpo roda a suíte sem versionar `.env`; o segredo falso não entra no histórico |
 | 2026-10-25 | Publicação aberta adiada | A escolha entre AGPL-3.0, MIT/Apache e source-available depende de estratégia comercial; antes disso é preciso sanitizar PII e histórico |
+| 2026-10-25 | Hermes Agent como primeiro alvo não-OpenCode | Ele usa o mesmo `SKILL.md`, progressive disclosure e `skill_view`; a adaptação é de instalação e capacidades, não de conteúdo |
+| 2026-10-25 | Núcleo canônico + adaptadores, sem fork por harness | Evita divergência de regras; o que muda é caminho, nome da ferramenta e política de escrita |
+| 2026-10-25 | Instalação multi-harness manual nesta versão | `install.py`, `adapters/`, `AGENTS.md` e testes de portabilidade ainda não existem; documentar o procedimento evita bloquear o uso no Hermes |
+| 2026-10-25 | Não usar `requires_toolsets: [terminal]` no Hermes | A skill deve carregar mesmo sem shell e degradar para “não executado”, em vez de desaparecer |
+| 2026-10-25 | Runtime subset para outros harnesses | `tests/`, planejamento e fixtures com segredos falsos não precisam ser carregados; reduz contexto e ruído de scanner |
+| 2026-10-25 | Hermes com `skills.write_approval: true` | O agente pode editar skills; com symlink para o repo, isso atingiria a fonte de verdade. O gate protege a escrita, mas não substitui a aprovação de ação no sistema |
+| 2026-10-25 | Repositório privado instalado localmente, não por URL | `hermes skills install` depende de acesso ao GitHub; symlink/cópia local funciona sem expor o código |
+| 2026-10-25 | `AGENTS.md` como adaptador genérico planejado | Codex, Cursor, Cline e agentes genéricos leem `AGENTS.md`; o `SKILL.md` continua sendo o conteúdo canônico |
 
 ---
 
@@ -459,6 +482,10 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 | Distribuição pública | não; o código não é instalável por terceiros enquanto o repo estiver privado |
 | Fonte da verdade local | `/home/matheus/skills/segurity` |
 | Instalação no OpenCode | symlink `~/.config/opencode/skills/gaara` |
+| Instalação no Hermes | symlink `~/.hermes/skills/security/gaara` |
+| Instalação no Codex | symlink `~/.codex/skills/gaara` |
+| Instalação no Claude Code | symlink `~/.claude/skills/gaara` (ou `.claude/skills/gaara`) |
+| Instalação no Gemini/Antigravity | `~/.gemini/skills/gaara`, quando a versão suportar `SKILL.md` |
 
 O repositório foi criado vazio no GitHub. A primeira tentativa de comandos foi executada fora deste diretório e não produziu commit remoto; o projeto foi então inicializado corretamente aqui e enviado. O `git status` local terminou limpo, com `main` rastreando `origin/main`.
 
@@ -552,7 +579,191 @@ Ainda não há CI nem branch protection; a disciplina é manual. Commits e tags 
 - [ ] Tratar os “segredos” falsos dos fixtures e documentar o falso positivo.
 - [ ] Considerar um repositório novo/histórico limpo se houver dados sensíveis.
 - [ ] Rodar a suíte no host e no Docker após a sanitização.
+- [ ] Validar a instalação nos harnesses documentados (OpenCode, Hermes, Codex e Claude Code).
+- [ ] Confirmar que o runtime instalado exclui `tests/`, planejamento e fixtures com segredos falsos.
 - [ ] Criar tag/release e registrar a data da decisão de publicação.
+
+---
+
+## 16. Portabilidade multi-harness (Hermes e outros)
+
+### 16.1 Decisão
+
+O Gaara **não será reescrito por harness**. O `SKILL.md`, as referências, os scripts e o schema continuam canônicos. O que muda é a camada de adaptação:
+
+- onde o harness descobre a skill;
+- qual ferramenta ele usa para ler arquivo, executar comando e carregar referência;
+- como ele trata aprovação e escrita;
+- como ele degrada quando falta shell, root ou rede.
+
+Essa separação evita cinco cópias divergentes da mesma regra de segurança.
+
+### 16.2 O que já é portátil
+
+| Ativo | Por que é portátil |
+|---|---|
+| `SKILL.md` | Markdown com frontmatter; formato comum a OpenCode, Hermes, Codex e Claude Code |
+| `references/` | Markdown puro, carregado sob demanda |
+| `scripts/` | Python stdlib; sem `pip`, sem framework |
+| `assets/` | JSON; sem YAML/PyYAML |
+| `finding-schema.md` | Contrato de saída independente de harness |
+| Política R1–R10 | Texto, não código de plataforma |
+| Rede | Não é necessária para nenhuma análise |
+
+O que **não** é portátil: o caminho de instalação, o nome da ferramenta de shell, o nome da ferramenta de leitura, a política de escrita em skills e a forma de invocação (`/gaara`, ferramenta `skill`, etc.).
+
+### 16.3 Hermes Agent
+
+O Hermes é o primeiro alvo não-OpenCode porque o encaixe é quase direto:
+
+- usa `SKILL.md` e o padrão agentskills.io;
+- aplica progressive disclosure com `skills_list()` → `skill_view(name)` → `skill_view(name, path)`;
+- instala skills em `~/.hermes/skills/`;
+- aceita `external_dirs` e skills de projeto (`.hermes/skills/` e `.agents/skills/`);
+- expõe o terminal como `terminal` e leitura como `read_file`;
+- permite `/gaara` e conversa natural.
+
+Instalação local, adequada ao repositório privado:
+
+```bash
+mkdir -p ~/.hermes/skills/security
+ln -s /home/matheus/skills/segurity ~/.hermes/skills/security/gaara
+hermes skills list | grep -i gaara
+```
+
+Em sessão nova:
+
+```text
+/gaara analisa /var/log/auth.log e me diz se há ataque
+```
+
+O agente deve carregar referências com:
+
+```text
+skill_view("gaara", "references/severity-matrix.md")
+```
+
+Cuidados específicos:
+
+- **Escrita:** o Hermes pode editar skills via `skill_manage`. Com symlink, isso pode alterar o repositório. Usar `skills.write_approval: true` ou instalar uma cópia de runtime.
+- **Ativação condicional:** não usar `requires_toolsets: [terminal]`. Isso esconderia a skill em ambientes sem terminal; o correto é carregar e degradar.
+- **Repositório privado:** `hermes skills install` por URL/GitHub depende de acesso; a instalação local por symlink/cópia é o caminho documentado.
+- **Scanner:** o Hermes pode rodar SkillEvaluator; fixtures com segredos falsos e caminhos pessoais devem ficar fora do runtime instalado.
+- **Descrição:** o padrão de authoring do Hermes recomenda descrição curta; a descrição atual do Gaara é rica em gatilhos. Antes de encurtar, medir o efeito no carregamento do OpenCode.
+- **Frontmatter:** `version` e `metadata.hermes` (tags/categoria) são recomendados, mas ainda não foram adicionados.
+
+### 16.4 Matriz de harnesses
+
+| Harness | Consome `SKILL.md`? | Instalação | Observação |
+|---|---|---|---|
+| OpenCode | Sim | `~/.config/opencode/skills/gaara` | Alvo original; symlink atual |
+| Hermes Agent | Sim | `~/.hermes/skills/security/gaara` | `skill_view`, `terminal`, `/gaara` |
+| Codex | Sim | `~/.codex/skills/gaara` | Também lê `AGENTS.md`, mas não é obrigatório |
+| Claude Code | Sim | `~/.claude/skills/gaara` ou `.claude/skills/gaara` | Skills pessoais ou de projeto |
+| Gemini/Antigravity | Depende da versão | `~/.gemini/skills/gaara` | Se não houver suporte, usar ponteiro `GEMINI.md` |
+| Cursor/Cline | Não nativamente | regra do projeto | Ponteiro para `SKILL.md`, referências e scripts |
+| Chat/API genérica | Não | prompt + anexos | Sem filesystem, entregar comandos para execução humana |
+
+### 16.5 Contrato de capacidades
+
+| Capacidade | Obrigatória? | Comportamento |
+|---|---|---|
+| Leitura de arquivo | Sim | Analisa log, código e config |
+| Shell/terminal | Não | Se ausente, entrega comando e marca “não executado” |
+| Root | Não | Se ausente, controles privilegiados viram `unknown` |
+| Escrita no sistema | Só com aprovação | `--execute` + `--approved-by`; nunca automático |
+| Rede | Não | Análise offline; CVE exige fonte fornecida/consultada pelo harness |
+| Subagentes | Não | Modo single-agent |
+| Escrita em skill | Não | Se o harness permitir, usar approval gate ou cópia read-only |
+
+Regra de honestidade: **nenhum agente pode afirmar que executou um comando sem receber a saída da ferramenta**. Sem shell, o resultado é uma recomendação com o comando, não um fato observado.
+
+### 16.6 Frontmatter e descrição
+
+Alvo recomendado, sem quebrar o OpenCode:
+
+```yaml
+---
+name: gaara
+description: Defensive security copilot for Linux servers and web applications.
+version: 2.2.0
+license: Proprietary
+metadata:
+  hermes:
+    tags: [security, blue-team, linux, logs, hardening]
+    category: security
+---
+```
+
+Decisões:
+
+- `name`, `description` e `license` continuam obrigatórios na prática.
+- `version` e `metadata.hermes` são opcionais e tolerados por harnesses que não os usam.
+- **Não** adicionar `platforms: [linux]` sem decidir se um analista em macOS pode usar triagem de log e auditoria PHP. A postura de host continua Linux-only.
+- A `description` longa favorece o trigger no OpenCode; uma descrição curta favorece o índice do Hermes. A escolha precisa de teste comparativo, não de preferência estética.
+- Não usar nomes de ferramentas do OpenCode no corpo canônico. Dizer “leia o arquivo”, “execute o comando” e “carregue a referência”; o adaptador traduz.
+
+### 16.7 Estrutura alvo
+
+Ainda **não implementado**; o README documenta a instalação manual:
+
+```text
+AGENTS.md                         # entrada universal para harnesses que leem AGENTS.md
+manifest.json                     # nome, versão, entrypoint, capacidades
+references/agent-contract.md      # contrato de ferramentas e degradação
+adapters/
+├── opencode.md
+├── hermes.md
+├── codex.md
+├── claude-code.md
+├── gemini.md
+├── cursor.md
+└── generic.md
+scripts/
+├── install.py                    # --target, --dry-run, symlink/cópia
+└── check_portability.py          # frontmatter, links, stdlib, cwd, instalação
+tests/test_portability.py
+```
+
+O instalador deve:
+
+- recusar sobrescrever sem `--force`;
+- preferir symlink e oferecer `--copy`;
+- instalar runtime subset (`SKILL.md`, `references/`, `scripts/`, `assets/`);
+- nunca usar `sudo`;
+- imprimir o caminho final e a validação.
+
+### 16.8 Fases
+
+| Fase | Escopo | Estado |
+|---|---|---|
+| **1** | Documentar instalação manual, matriz de harnesses, Hermes e contrato de capacidades | ✅ neste README/documento |
+| **2** | `AGENTS.md`, `manifest.json`, `agent-contract.md`, `adapters/`, `install.py` | ⏳ planejado |
+| **3** | Testes de portabilidade e trigger em OpenCode, Hermes, Codex e Claude | ⏳ planejado |
+
+### 16.9 Critérios de aceite da portabilidade
+
+- [ ] `hermes skills list` mostra `gaara`.
+- [ ] `/gaara` carrega em sessão nova do Hermes.
+- [ ] Pedido natural de triagem escolhe `log_triage.py` e a referência correta.
+- [ ] `skill_view("gaara", "references/...")` funciona.
+- [ ] Scripts rodam via `terminal`, com caminho absoluto, sem depender do cwd.
+- [ ] Sem root, o relatório mostra `unknown`, não “seguro”.
+- [ ] Sem shell, o agente entrega o comando e não inventa saída.
+- [ ] Codex e Claude Code carregam o mesmo `SKILL.md`.
+- [ ] Runtime subset não inclui `tests/`, planejamento ou fixtures com segredos falsos.
+- [ ] `install.py --dry-run` não escreve.
+- [ ] `check_portability.py` passa em clone limpo.
+- [ ] Teste de trigger registrado por harness em `tests/expected/`.
+
+### 16.10 Riscos e limitações
+
+- Portabilidade **não** significa distribuível: a licença proprietária continua valendo.
+- Caminhos de harness podem mudar entre versões; o README precisa ser revalidado.
+- Symlink é conveniente, mas permite escrita do agente; approval gate ou cópia read-only é mais seguro.
+- O scanner do Hermes pode sinalizar fixtures com segredos falsos; instalar o runtime subset evita o ruído.
+- A descrição é o gatilho; alterá-la para caber em um harness pode piorar o carregamento em outro.
+- Ainda não há CI nem teste automatizado de portabilidade; a validação é manual.
 
 ---
 
