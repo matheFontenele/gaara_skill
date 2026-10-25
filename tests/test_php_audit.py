@@ -61,8 +61,18 @@ def run_json(path: Path, *args: str) -> tuple[dict, subprocess.CompletedProcess[
 class PhpAuditTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        # O modo do .env faz parte do teste de permissões.
-        (VULNERABLE / ".env").chmod(0o644)
+        # O .env é fixture de teste e fica fora do controle de versão: ele é
+        # recriado para que um clone limpo rode a suíte sem depender de arquivo
+        # local. O modo faz parte do teste de permissões.
+        env_path = VULNERABLE / ".env"
+        if not env_path.exists():
+            env_path.write_text(
+                "APP_ENV=production\n"
+                "DB_PASSWORD=EnvSecret123\n"
+                "API_TOKEN=abcdef1234567890\n",
+                encoding="utf-8",
+            )
+        env_path.chmod(0o644)
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="gaara-php-audit-"))
