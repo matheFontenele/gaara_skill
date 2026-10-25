@@ -4,7 +4,7 @@ Gaara é uma skill do **OpenCode** para segurança defensiva. Ela transforma log
 
 O princípio é simples: **observar, correlacionar e recomendar**. A skill só altera o sistema quando você autoriza explicitamente, na mesma sessão, com escopo mínimo, TTL, auditoria e rollback.
 
-> Status atual: lotes 0–6 concluídos. Este README cobre instalação e uso; a validação de gatilho em sessão nova é o último item do lote 7.
+> Status atual: lotes 0–7a concluídos — skill, testes, README, instalação e repositório privado. O lote 7b (validação de gatilho em sessão nova e decisão de publicação) está pendente.
 
 ---
 

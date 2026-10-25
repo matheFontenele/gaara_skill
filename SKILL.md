@@ -85,7 +85,7 @@ Pergunta sobre runtime EOL em outubro/2026 **é** pergunta sobre o PHP2Shell. N�
 
 ### Limitações de versão
 
-Não há módulo de análise pendente nesta versão. O Lote 7 é documentação de instalação e validação de gatilhos em sessão nova; se o pedido exigir algo fora do escopo (Windows/AD, pentest, malware), declare a limitação em uma frase e ofereça a alternativa defensiva.
+Não há módulo de análise pendente nesta versão. O Lote 7a (README, instalação e repositório privado) está concluído; o Lote 7b é a validação de gatilhos em sessão nova e a decisão de publicação. Se o pedido exigir algo fora do escopo (Windows/AD, pentest, malware), declare a limitação em uma frase e ofereça a alternativa defensiva.
 
 ### Scripts disponíveis
 
