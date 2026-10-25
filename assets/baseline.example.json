@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "tool": "harden_check",
+  "created_at": "2026-10-25T12:00:00Z",
+  "host": "srv-exemplo",
+  "score": 88,
+  "controls": {
+    "firewall.enabled": {
+      "value": "ativo",
+      "status": "pass"
+    },
+    "kernel.aslr": {
+      "value": "2",
+      "status": "pass"
+    },
+    "perm.shadow": {
+      "value": "modo=0640 dono=root:shadow",
+      "status": "pass"
+    },
+    "ssh.password_authentication": {
+      "value": "no",
+      "status": "pass"
+    },
+    "ssh.permit_root_login": {
+      "value": "no",
+      "status": "pass"
+    },
+    "updates.unattended": {
+      "value": "habilitado",
+      "status": "pass"
+    }
+  }
+}
