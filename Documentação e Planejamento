@@ -454,7 +454,7 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 | Repositório | `git@github.com:matheFontenele/gaara_skill.git` |
 | Visibilidade | **privada** (decisão do titular) |
 | Branch principal | `main` |
-| Último commit remoto | `09890c3` (`refs/heads/main`) |
+| Último commit remoto | `origin/main` (hash volátil; consultar `git ls-remote --heads origin`) |
 | Licença | proprietária — todos os direitos reservados |
 | Distribuição pública | não; o código não é instalável por terceiros enquanto o repo estiver privado |
 | Fonte da verdade local | `/home/matheus/skills/segurity` |
@@ -469,12 +469,13 @@ O repositório foi criado vazio no GitHub. A primeira tentativa de comandos foi 
 | `17bb2d6` | `Initial import: Gaara defensive security skill` | 56 arquivos, 14.427 inserções: skill, referências, scripts, assets, testes, fixtures, planejamento e registros de aceite |
 | `fd3c749` | `Make PHP audit .env fixture self-contained` | O teste de `php_audit.py` passa a criar `tests/corpus/php-vulnerable/.env` se ele não existir; clone limpo não depende de arquivo ignorado |
 | `09890c3` | `Add Docker build context exclusions` | `.dockerignore` impede que `.git`, caches, `.env`, `assets/config.json` e `.jsonl` entrem no contexto/imagem Docker |
+| `8b08ec9` | `Document Lote 6 and private repository rollout` | Consolida neste documento o Lote 6, o repositório privado, a licença proprietária, a higiene de segredos e o checklist de publicação |
 
-Validação após o último commit:
+Validação antes do commit de documentação:
 
 - **125/125 testes** no host.
 - **125/125 testes** em Docker `python:3.12-slim`, `--network none`, com contexto limpo e sem `.env` local: o fixture é recriado pelo teste.
-- `git ls-remote --heads origin` confirma `refs/heads/main` no hash `09890c3`.
+- `git ls-remote --heads origin` deve apontar para o HEAD de `main`; o hash muda a cada commit de documentação.
 
 ### 15.3 Licença e direitos
 
