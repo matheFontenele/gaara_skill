@@ -17,11 +17,11 @@ Uso:
     ./f2b_guard.py check --jail sshd --ip 203.0.113.45
     ./f2b_guard.py ban --ip 203.0.113.45 --jail sshd --severity alto \
         --confidence alta --reason "312 falhas SSH" --evidence "auth.log:1234"
-    ./f2b_guard.py ban ... --execute --approved-by matheus
+    ./f2b_guard.py ban ... --execute --approved-by seu-nome
     ./f2b_guard.py unban --ip 203.0.113.45 --jail sshd --reason "falso positivo" \
-        --execute --approved-by matheus
+        --execute --approved-by seu-nome
     ./f2b_guard.py sweep
-    ./f2b_guard.py sweep --execute --approved-by matheus
+    ./f2b_guard.py sweep --execute --approved-by seu-nome
 
 Códigos de saída:
     0  sucesso (ou dry-run válido)

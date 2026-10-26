@@ -4,17 +4,16 @@ Gaara é uma skill de **segurança defensiva portátil entre harnesses de IA**. 
 
 O princípio é simples: **observar, correlacionar e recomendar**. A skill só altera o sistema quando você autoriza explicitamente, na mesma sessão, com escopo mínimo, TTL, auditoria e rollback.
 
-> **Estado:** beta fechado. O repositório continua **privado** enquanto os testes com usuários convidados acontecem. Este README já está no formato de distribuição aberta: clone, instalação por harness, checklist de teste e canal de feedback. A licença pública será definida antes da abertura; veja a seção 12.
->
-> A instalação multi-harness é manual nesta versão; `adapters/`, `install.py` e os testes de portabilidade ainda são planejados.
+> **Estado:** público desde 2026-10-26. O repositório está aberto em [github.com/matheFontenele/gaara_skill](https://github.com/matheFontenele/gaara_skill) sob licença MIT. A instalação multi-harness é manual nesta versão; `adapters/`, `install.py` e os testes de portabilidade ainda são planejados.
 
 | Item | Estado |
 |---|---|
-| Versão | 2.3 |
+| Versão | 2.4 |
 | Testes | 125/125 no host e no sandbox Docker |
 | Harnesses documentados | OpenCode, Hermes Agent, Codex, Claude Code, Gemini/Antigravity e agentes genéricos |
-| Distribuição | beta fechado; acesso por convite |
-| Licença | proprietária durante o beta; licença pública a definir |
+| Distribuição | pública; clone via HTTPS ou SSH |
+| Licença | MIT |
+| Repositório | https://github.com/matheFontenele/gaara_skill |
 
 ---
 
@@ -39,7 +38,7 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 
 - Um harness que consuma `SKILL.md` — OpenCode, Hermes Agent, Codex, Claude Code ou Gemini/Antigravity — **ou** um agente genérico com leitura de arquivos e, opcionalmente, execução de comandos.
 - Git, para clonar e atualizar o repositório.
-- Acesso ao repositório: público após a abertura; durante o beta fechado, acesso por convite (SSH ou token).
+- Acesso à internet para clonar o repositório; depois do clone, as análises funcionam offline.
 - Python **3.10+** (recomendado 3.12+); todos os scripts de análise usam apenas a biblioteca padrão.
 - Bash, para `scripts/ir_triage.sh`.
 - Opcional: Fail2ban, Docker, `sshd`, `ufw`, `nft`, `iptables` e `ss`, conforme o que você quer auditar.
@@ -53,26 +52,34 @@ A rotina de incidente e a postura de host pressupõem Linux. Triagem de logs e a
 
 ### 3.1 Baixar o repositório
 
-Em outra máquina, o primeiro passo é clonar o repositório. O comando muda conforme o estado de acesso:
+Em outra máquina, o primeiro passo é clonar o repositório público:
 
 ```bash
-# Enquanto o beta estiver fechado (repositório privado):
-git clone git@github.com:matheFontenele/gaara_skill.git
+git clone https://github.com/matheFontenele/gaara_skill.git
 cd gaara_skill
-
-# Quando o repositório estiver público:
-# git clone https://github.com/matheFontenele/gaara_skill.git
-# cd gaara_skill
 
 export GAARA_REPO="$PWD"
 printf 'Repositório em: %s\n' "$GAARA_REPO"
 ```
 
-Testadores convidados recebem acesso ao repositório privado pelo mantenedor. Não redistribua o código durante o beta; a licença pública só vale depois da abertura formal.
+Se você usa chave SSH, o clone equivalente é:
+
+```bash
+git clone git@github.com:matheFontenele/gaara_skill.git
+```
 
 O diretório clonado pode ter qualquer nome e ficar em qualquer caminho; os comandos abaixo usam `$GAARA_REPO`. Se você abrir outro terminal, redefina a variável ou repita o `cd` no clone.
 
+Para atualizar uma instalação existente:
+
+```bash
+cd "$GAARA_REPO"
+git pull --ff-only
+```
+
 Se você recebeu um `.zip` em vez do Git, extraia e use o diretório extraído como `$GAARA_REPO`; nesse caso, atualizações não virão por `git pull`.
+
+Os exemplos usam sintaxe POSIX/bash. No **fish**, `${VAR:-default}` e `export` não funcionam; depois do clone, use `set -gx GAARA_REPO (pwd)` e veja os demais equivalentes na seção 3.3.
 
 ### 3.2 Onde instalar
 
@@ -103,9 +110,66 @@ readlink -f "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/gaara"
 
 O último comando deve apontar para a raiz deste repositório. Abra uma sessão nova do OpenCode.
 
+Se o destino já existir e for um symlink antigo, remova apenas o link antes de recriar:
+
+```bash
+rm "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills/gaara"
+```
+
+Não sobrescreva um diretório real.
+
+**Fish:** o bloco acima é bash. No fish, use:
+
+```fish
+set -gx GAARA_REPO (pwd)
+
+set -l config_home $HOME/.config
+if set -q XDG_CONFIG_HOME
+    set config_home $XDG_CONFIG_HOME
+end
+
+mkdir -p $config_home/opencode/skills
+if test -L $config_home/opencode/skills/gaara
+    rm $config_home/opencode/skills/gaara
+end
+ln -s $GAARA_REPO $config_home/opencode/skills/gaara
+readlink -f $config_home/opencode/skills/gaara
+```
+
+#### Permissão de skills
+
+No OpenCode, o symlink sozinho não garante que a skill seja carregada. A permissão `skill` precisa permitir a Gaara. Verifique `~/.config/opencode/opencode.json`; se houver:
+
+```json
+"permission": {
+  "skill": "deny"
+}
+```
+
+a skill fica **oculta do modelo** e não é chamada. Para manter outras skills bloqueadas e liberar apenas a Gaara:
+
+```json
+"permission": {
+  "skill": {
+    "*": "deny",
+    "gaara": "allow"
+  }
+}
+```
+
+Alternativas: `"skill": "allow"` libera todas; `"skill": "ask"` pede aprovação antes de carregar. A ordem importa: a última regra que casa vence, então deixe `"*"` primeiro e `"gaara"` depois.
+
+Depois de alterar o `opencode.json`, **reinicie o processo do OpenCode**. Abrir apenas uma sessão nova recarrega a descoberta da skill, mas não necessariamente o arquivo de configuração; a permissão é lida na inicialização. Para validar:
+
+```bash
+python3 -c 'import json, os; print(json.load(open(os.path.expanduser("~/.config/opencode/opencode.json")))["permission"])'
+```
+
+O caminho do exemplo é o padrão; se você usa `XDG_CONFIG_HOME`, ajuste o caminho.
+
 ### 3.4 Hermes Agent
 
-O Hermes usa o mesmo padrão `SKILL.md`, com progressive disclosure via `skill_view`. A instalação local é o caminho recomendado porque o repositório é privado.
+O Hermes usa o mesmo padrão `SKILL.md`, com progressive disclosure via `skill_view`. A instalação local por symlink ou cópia é o caminho mais previsível; o repositório também pode ser clonado publicamente.
 
 ```bash
 cd "$GAARA_REPO"
@@ -213,7 +277,7 @@ mkdir -p "$DEST"
 cp -a SKILL.md references scripts assets "$DEST/"
 ```
 
-Não copie `tests/`, `Documentação e Planejamento` ou registros de aceite para o runtime de um agente. Isso reduz contexto, evita que o agente leia planejamento interno e impede que os “segredos” falsos das fixtures sejam sinalizados por scanners.
+Não copie `tests/`, `Documentação e Planejamento` ou registros de aceite para o runtime de um agente. Isso reduz contexto, evita que o agente leia planejamento histórico e impede que os “segredos” falsos das fixtures sejam sinalizados por scanners.
 
 ### 3.9 Permissões
 
@@ -377,7 +441,8 @@ Não carregue todas as referências de uma vez. O roteador em `SKILL.md` indica 
 - Não há `adapters/` nem `AGENTS.md`; os caminhos estão documentados neste README.
 - Não há teste de portabilidade automatizado.
 - A validação de trigger no Hermes/Codex/Claude ainda não foi registrada.
-- O frontmatter atual é mínimo (`name`, `description`, `license`); `version` e `metadata.hermes` são recomendados, mas ainda não foram adicionados.
+- O frontmatter inclui `name`, `description`, `version` e `license`; `metadata.hermes` ainda é recomendado para tags/categoria.
+- No OpenCode, a permissão `skill` precisa permitir `gaara`; veja a seção 3.3.
 
 ---
 
@@ -469,7 +534,13 @@ hermes skills list | grep -i gaara
 hermes chat -q "/gaara analisa /var/log/auth.log e me diz se há ataque"
 ```
 
-Esse teste ainda não foi registrado em `tests/expected/`; é parte da portabilidade planejada.
+No OpenCode, abra uma sessão nova e peça:
+
+```text
+use a skill gaara para analisar tests/corpus/auth-sample.log e dizer se há ataque
+```
+
+Confirme no transcript a chamada da ferramenta `skill` e a leitura de `SKILL.md`/`references/...`. Esse teste ainda não foi registrado em `tests/expected/`; é parte da portabilidade planejada.
 
 Os registros de aceite ficam em `tests/expected/`:
 
@@ -490,10 +561,10 @@ references/                  conhecimento carregado sob demanda
 scripts/                     ferramentas stdlib-only
 assets/                      config e baseline de exemplo
 tests/                       suíte determinística e fixtures
-LICENSE                      proprietária — todos os direitos reservados
+LICENSE                      licença MIT
 .gitignore                   proteção de config, segredos e caches
 .dockerignore                contexto de build mínimo
-Documentação e Planejamento  arquitetura, decisões e roadmap
+Documentação e Planejamento  arquitetura, decisões e roadmap (documento histórico)
 ```
 
 Planejado para a camada de portabilidade:
@@ -524,7 +595,11 @@ Referências principais:
 
 | Sintoma | Causa provável | O que fazer |
 |---|---|---|
-| Skill não carrega no OpenCode | symlink quebrado ou `SKILL.md` fora da raiz | `readlink -f` e confira o caminho |
+| Skill não carrega no OpenCode | symlink quebrado, `SKILL.md` fora da raiz ou `permission.skill` em `deny` | `readlink -f`; confira `SKILL.md`; ajuste `permission.skill` (seção 3.3); reinicie a sessão |
+| OpenCode não mostra a skill | sessão iniciada antes da instalação ou permissão `deny` | confira `permission.skill`; reinicie o OpenCode; abra sessão nova |
+| Skill é carregada, mas não usada | trigger não reconhecido ou sessão antiga | peça explicitamente “use a skill gaara” e confira o transcript |
+| Comando do README falha no fish | sintaxe POSIX (`${VAR:-default}`, `export`) | use os equivalentes fish da seção 3.3 ou execute com `bash` |
+| Orca/Codex não carrega | skill instalada apenas no OpenCode; o Orca pode indexar a skill, mas o agente do pane precisa dela no harness dele | instale no harness do pane (`~/.codex/skills/gaara`, `~/.claude/skills/gaara` etc.) ou use um pane OpenCode |
 | Hermes não lista o Gaara | destino errado ou sessão antiga | confira `~/.hermes/skills/security/gaara/SKILL.md` e abra sessão nova |
 | `/gaara` não existe no Hermes | skill instalada depois do início da sessão | `/reset` ou nova sessão |
 | Hermes altera arquivos da skill | `skill_manage` com symlink gravável | `skills.write_approval: true` ou use cópia |
@@ -562,17 +637,17 @@ rm -f assets/config.json
 
 ---
 
-## 11. Beta fechado e testadores
+## 11. Distribuição, testes e contribuições
 
 ### 11.1 Objetivo
 
-O beta fechado existe para validar três coisas antes de qualquer abertura:
+Esta distribuição pública existe para validar três coisas:
 
 1. a skill carrega e é escolhida em linguagem natural nos harnesses reais;
 2. os scripts produzem o resultado esperado sem root e sem rede;
 3. nenhum dado sensível vaza em relatório, auditoria ou feedback.
 
-O repositório continua privado durante essa fase. O README já descreve a instalação pública para que a transição não exija reescrever os comandos.
+O repositório é público e a instalação é documentada por harness. A validação de trigger ainda é manual e registrada em `tests/expected/`.
 
 ### 11.2 Antes de começar
 
@@ -591,6 +666,7 @@ python3 --version
 ### 11.3 Checklist de teste
 
 - [ ] A skill aparece no harness escolhido (OpenCode ou Hermes).
+- [ ] No OpenCode, `permission.skill` permite `gaara` e a sessão foi aberta depois da instalação.
 - [ ] Um pedido em linguagem natural escolhe a rotina correta.
 - [ ] `python3 -m unittest discover -s tests -p "test_*.py"` passa.
 - [ ] `log_triage.py` roda em `tests/corpus/auth-sample.log` e não mostra segredo.
@@ -620,7 +696,7 @@ hermes chat -q "/gaara analisa tests/corpus/auth-sample.log e me diz se há ataq
 
 ### 11.4 O que não fazer
 
-- Não rodar `f2b_guard.py --execute` em produção durante o beta.
+- Não rodar `f2b_guard.py --execute` em produção; teste em VM/container e só execute após aprovação explícita.
 - Não usar a skill para pentest, exploit, scan em terceiros ou bypass.
 - Não testar em Windows/Active Directory; está fora de escopo.
 - Não tratar score de hardening como certificação.
@@ -638,7 +714,7 @@ Ao testar:
 - compartilhe apenas o trecho necessário, não o arquivo inteiro;
 - trate o feedback como dado sensível até revisar.
 
-Se o projeto for aberto, issues e discussões serão públicas. Nunca cole segredo em issue. Para vulnerabilidade no próprio Gaara, use o canal privado combinado com o mantenedor.
+O repositório é público; issues e discussões são públicas. Nunca cole segredo em issue. Para vulnerabilidade no próprio Gaara, não abra issue pública: use o canal privado combinado com o mantenedor ou o Security Advisory do GitHub.
 
 ### 11.6 Como reportar
 
@@ -656,9 +732,9 @@ Não inclua credenciais, chaves, `.env`, dados de cliente ou logs brutos.
 
 ### 11.7 Contribuições
 
-Durante o beta fechado, contribuições externas devem ser combinadas com o mantenedor antes de um pull request. A licença pública e a política de contribuição (CLA/DCO) serão definidas antes da abertura.
+Contribuições são bem-vindas via issue ou pull request. Ao enviar uma contribuição, você concorda em licenciá-la sob a mesma licença MIT do projeto.
 
-Critérios para qualquer contribuição futura:
+Critérios para qualquer contribuição:
 
 - suíte verde;
 - nenhum segredo real em código, teste ou fixture;
@@ -670,16 +746,30 @@ Critérios para qualquer contribuição futura:
 
 ## 12. Licença
 
-**Beta fechado — proprietária. Todos os direitos reservados.**
+Gaara é distribuído sob a licença **MIT**.
 
-Enquanto o repositório estiver privado, nenhuma permissão de uso, cópia,
-modificação, distribuição ou sublicenciamento é concedida sem autorização
-prévia por escrito do titular. Consulte o arquivo `LICENSE` para os termos
-completos.
+```text
+MIT License
 
-Testadores convidados recebem autorização limitada para instalar e testar o
-Gaara no contexto combinado com o mantenedor. Essa autorização não inclui
-redistribuição, publicação, uso comercial ou criação de fork público.
+Copyright (c) 2026 Matheus Fontenele
 
-Antes da abertura, o arquivo `LICENSE` e esta seção serão substituídos pela
-licença pública escolhida. Nada neste README concede direitos antecipados.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+Consulte também o arquivo `LICENSE`.

@@ -1,7 +1,8 @@
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications. Triages auth and web logs for brute force, credential stuffing, scanning, path traversal, exploitation attempts and API abuse; investigates possible compromise; runs guided incident response; audits legacy and end-of-life stacks (PHP 5 and other unpatched runtimes) for dangerous patterns and missing patches; recommends and verifies hardening for SSH, firewall, fail2ban, TLS, file permissions and secrets. Use when the user asks to analyze logs, investigate suspicious activity, check server security posture, respond to an incident, evaluate an emergency CVE, or harden a server. Also triggers on Portuguese requests about segurança, logs, invasão, hardening and vulnerabilidades.
-license: Proprietary
+version: 2.4.0
+license: MIT
 ---
 
 # Gaara — Copiloto Blue Team
@@ -85,7 +86,7 @@ Pergunta sobre runtime EOL em outubro/2026 **é** pergunta sobre o PHP2Shell. N�
 
 ### Limitações de versão
 
-Não há módulo de análise pendente nesta versão. O Lote 7a (README, instalação e repositório privado) está concluído; o Lote 7b é a validação de gatilhos em sessão nova e a decisão de publicação. Se o pedido exigir algo fora do escopo (Windows/AD, pentest, malware), declare a limitação em uma frase e ofereça a alternativa defensiva.
+Não há módulo de análise pendente nesta versão. O Lote 7a (README e instalação) está concluído; o repositório foi publicado em 2026-10-26. O Lote 7b é a validação de gatilhos em sessão nova e o registro de aceite nos harnesses. Se o pedido exigir algo fora do escopo (Windows/AD, pentest, malware), declare a limitação em uma frase e ofereça a alternativa defensiva.
 
 ### Scripts disponíveis
 
@@ -116,9 +117,9 @@ python3 scripts/f2b_guard.py check --jail sshd --ip 203.0.113.45
 python3 scripts/f2b_guard.py ban --ip 203.0.113.45 --jail sshd \
   --severity alto --confidence alta \
   --reason "312 falhas SSH em 31 min" --evidence "auth.log:1234-1560"
-python3 scripts/f2b_guard.py ban ... --execute --approved-by matheus
+python3 scripts/f2b_guard.py ban ... --execute --approved-by seu-nome
 python3 scripts/f2b_guard.py unban --ip 203.0.113.45 --jail sshd \
-  --reason "falso positivo" --execute --approved-by matheus
+  --reason "falso positivo" --execute --approved-by seu-nome
 python3 scripts/f2b_guard.py sweep
 ```
 

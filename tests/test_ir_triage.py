@@ -49,7 +49,7 @@ def run(root: Path, *args: str, timeout: int = 120) -> subprocess.CompletedProce
 def build_clean(root: Path) -> None:
     write(root / "var/www/html/index.php", "<?php echo 'ok'; ?>\n")
     write(root / "etc/crontab", "SHELL=/bin/sh\n17 * * * * root cd / && run-parts --report /etc/cron.hourly\n", mtime=OLD)
-    write(root / "etc/passwd", "root:x:0:0:root:/root:/bin/bash\nmatheus:x:1000:1000::/home/matheus:/bin/bash\n", mtime=OLD)
+    write(root / "etc/passwd", "root:x:0:0:root:/root:/bin/bash\nusuario:x:1000:1000::/home/usuario:/bin/bash\n", mtime=OLD)
     write(root / "etc/sudoers", "root ALL=(ALL:ALL) ALL\n", mtime=OLD)
     write(root / "var/log/auth.log", "ok\n")
     (root / "etc/cron.d").mkdir(parents=True, exist_ok=True)
