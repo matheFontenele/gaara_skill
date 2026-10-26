@@ -161,15 +161,15 @@ python3 scripts/f2b_guard.py ban --ip 203.0.113.45 --jail sshd \
   --reason "312 falhas SSH em 31 min" --evidence "auth.log:1234-1560"
 
 # executa somente com aprovação explícita na mesma sessão
-python3 scripts/f2b_guard.py ban ... --execute --approved-by matheus
+python3 scripts/f2b_guard.py ban ... --execute --approved-by seu-nome
 
 # remove apenas ban criado por esta ferramenta
 python3 scripts/f2b_guard.py unban --ip 203.0.113.45 --jail sshd \
-  --reason "falso positivo" --execute --approved-by matheus
+  --reason "falso positivo" --execute --approved-by seu-nome
 
 # remove bans vencidos; dry-run lista o que faria
 python3 scripts/f2b_guard.py sweep
-python3 scripts/f2b_guard.py sweep --execute --approved-by matheus
+python3 scripts/f2b_guard.py sweep --execute --approved-by seu-nome
 ```
 
 Flags globais (`--config`, `--format json|md`, `--now`) vêm **antes** do subcomando.

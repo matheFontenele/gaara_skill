@@ -4,12 +4,14 @@
 
 | | |
 |---|---|
-| **Versão** | 2.2 |
+| **Versão do plano** | 2.2 (skill 2.4) |
 | **Data** | 2026-10-25 |
-| **Status** | Lotes 0–7a concluídos; Lote 7b pendente (trigger em sessão nova e decisão de publicação); portabilidade multi-harness documentada, automação pendente |
+| **Status** | Lotes 0–7a concluídos; repositório público sob MIT desde 2026-10-26; Lote 7b pendente (trigger e aceite nos harnesses); portabilidade multi-harness documentada, automação pendente |
 | **Substitui** | v1 ("Planejamento & Arquitetura: Skill de Cibersegurança para IA / Cyber Guardian") |
 
 **Revisão 2.2 (2026-10-25):** documenta a portabilidade multi-harness — Hermes Agent como primeiro alvo não-OpenCode, instalação manual, contrato de capacidades, runtime subset, riscos de escrita por agente e o roadmap do Lote 8. O README foi reescrito para cobrir instalação e execução em OpenCode, Hermes, Codex, Claude Code, Gemini/Antigravity, Cursor/Cline e agentes genéricos.
+
+**Nota de estado (2026-10-26):** o repositório passou a ser público sob licença MIT. Este documento é histórico: as seções 15 e 16 contêm referências à fase privada/proprietária e podem mencionar caminhos da máquina do mantenedor. Para instalação e uso atuais, consulte o README.
 
 ---
 
@@ -197,10 +199,10 @@ Regra estrutural: **toda ação passa pela camada 0**. Não existe caminho que v
 ## 8. Estrutura de arquivos
 
 ```
-/home/matheus/skills/segurity/
+/caminho/para/gaara_skill/
 ├── .gitignore                        # exclui config/auditoria/segredos locais
 ├── .dockerignore                     # impede que contexto local entre na imagem
-├── LICENSE                           # proprietária — todos os direitos reservados
+├── LICENSE                           # MIT
 ├── Documentação e Planejamento       # este documento
 ├── SKILL.md                          # entrada da skill: escopo, regras, roteador
 ├── README.md                         # instalação, uso e licença
@@ -255,7 +257,7 @@ Regra estrutural: **toda ação passa pela camada 0**. Não existe caminho que v
     └── baseline.example.json
 ```
 
-**Instalação:** fonte da verdade em `/home/matheus/skills/segurity`, exposta ao OpenCode via symlink `~/.config/opencode/skills/gaara` (plural — é o caminho nativo de descoberta, e o `name` do frontmatter precisa bater com o nome do diretório). O código é versionado no repositório **privado** `git@github.com:matheFontenele/gaara_skill.git`, branch `main`.
+**Instalação:** fonte da verdade em `/caminho/para/gaara_skill`, exposta ao OpenCode via symlink `~/.config/opencode/skills/gaara` (plural — é o caminho nativo de descoberta, e o `name` do frontmatter precisa bater com o nome do diretório). O código é versionado no repositório público `https://github.com/matheFontenele/gaara_skill`, branch `main`.
 
 **Observação sobre fixtures:** `tests/corpus/php-vulnerable/.env` é **gerado pelo `setUpClass`** e ignorado pelo Git; um clone limpo não depende dele. Já `tests/corpus/php-vulnerable/config.php` contém credenciais **falsas e intencionais** para testar a auditoria. Nenhum segredo real é versionado.
 
@@ -344,8 +346,8 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 | **4** ✅ | `php_audit.py` + testes | Amostra vulnerável: 32 achados (4 críticos, 25 altos, 3 médios) em 5 arquivos PHP; amostra sadia: 0 achados; 64 testes verdes |
 | **5** ✅ | `f2b_guard.py` + `config.example.json` + testes + sandbox Docker | 30 testes novos (94 no total); e2e detecção → ban → unban com cliente falso; suíte verde em `python:3.12-slim` com `--network none` |
 | **6** ✅ | `harden_check.py` + `hardening-linux.md` + `baseline.example.json` + testes | 31 testes novos (125 no total); score em host real; segunda execução detecta drift de `.env` em teste controlado |
-| **7a** ✅ | `README.md` + instalação + `.gitignore` + `.dockerignore` + `LICENSE` proprietária + repositório privado | Commit inicial com 56 arquivos; repo privado no GitHub; 125/125 testes no host e em Docker; clone limpo sem `.env`; nenhum segredo real versionado |
-| **7b** ⏳ | Trigger em sessão nova + decisão de licença pública | Falta validar o gatilho de hardening/README em sessão nova; decisão sobre abrir o código e sanitização de PII/histórico continua pendente |
+| **7a** ✅ | `README.md` + instalação + `.gitignore` + `.dockerignore` + `LICENSE` + repositório público | Commit inicial com 56 arquivos; repositório público no GitHub; 125/125 testes no host e em Docker; clone limpo sem `.env`; nenhum segredo real versionado |
+| **7b** ⏳ | Trigger em sessão nova + registro de aceite nos harnesses | Licença MIT decidida em 2026-10-26; falta validar o gatilho de hardening/README em sessão nova e registrar os aceites |
 | **8** ⏳ | Portabilidade multi-harness: `AGENTS.md`, `manifest.json`, `agent-contract.md`, `adapters/`, `install.py`, testes de portabilidade | Instalar em OpenCode, Hermes, Codex, Claude Code e genérico; validar gatilhos em pelo menos três harnesses; nenhuma dependência de nome de ferramenta do OpenCode |
 
 **Racional da ordem:** lotes 1–4 e 6 são somente leitura e entregam a maior parte do valor com risco zero. O lote 5 é o único que altera o sistema — vem depois de sandbox e testes, nunca antes. O lote 7 é de distribuição e proteção do repositório. O lote 8 é de portabilidade: o núcleo já é Markdown + stdlib, então o trabalho é adaptar instalação, capacidades e testes, não reescrever a skill.
@@ -366,7 +368,7 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 7. **Auditoria PHP (bloqueante)** — amostra vulnerável detecta RCE, inclusão, SQLi, upload, segredos, EOL e 12 sinais de migração; amostra sadia com comentários/strings e `vendor/` ignorado → 0 achados. Segredo não aparece na saída padrão; chave privada é citada sem material. Registro em `tests/expected/php-audit-2026-10-24.md`.
 8. **Ação Fail2ban (bloqueante)** — `log_triage.py` encontra o IP crítico em `auth-sample.log`; `f2b_guard.py` recusa allowlist, CIDR, jail inválido, confiança baixa, TTL acima do teto e execução sem aprovação; ban é confirmado no jail, auditado em JSONL `0600` e removido por `unban`; `sweep` remove só bans vencidos da ferramenta. Cliente falso, nenhum Fail2ban real tocado. Registro em `tests/expected/f2b-2026-10-24.md`.
 9. **Postura Linux (bloqueante)** — `harden_check.py` produz score com cobertura, detecta SSH/firewall/kernel/permissões/UID 0/TLS/Docker/portas, não altera arquivos e não usa sudo. Baseline `0600` é comparado em segunda execução; mudança de permissão de `.env` gera `regressao`. Host real: score 81/100, cobertura 72% (159/220 de peso), 2 altos e 2 médios; após alteração controlada de `.env` para `0644`, segunda execução detectou 1 regressão, score 75/100 e delta -6. Registro em `tests/expected/harden-2026-10-25.md`.
-10. **Repositório privado e distribuição (concluído em 25/10)** — projeto versionado em `git@github.com:matheFontenele/gaara_skill.git`, branch `main`, visibilidade privada. O commit inicial `17bb2d6` importou 56 arquivos e 14.427 linhas; `fd3c749` tornou o fixture `.env` autocontido; `09890c3` adicionou o `.dockerignore`. `LICENSE` é proprietária (todos os direitos reservados); `SKILL.md` e `README.md` foram corrigidos para não declarar MIT. `assets/config.json`, `.env`, auditoria `.jsonl`, chaves e caches não são versionados. Suíte: 125/125 no host e 125/125 no Docker `python:3.12-slim` sem rede, inclusive em clone limpo sem `.env`.
+10. **Repositório e distribuição (fase inicial em 25/10; aberto sob MIT em 26/10)** — projeto versionado em `git@github.com:matheFontenele/gaara_skill.git`, branch `main`, visibilidade privada na fase inicial. O commit inicial `17bb2d6` importou 56 arquivos e 14.427 linhas; `fd3c749` tornou o fixture `.env` autocontido; `09890c3` adicionou o `.dockerignore`. `LICENSE` era proprietária (todos os direitos reservados) e foi substituída por MIT em 26/10; `SKILL.md` e `README.md` foram atualizados para a distribuição pública. `assets/config.json`, `.env`, auditoria `.jsonl`, chaves e caches não são versionados. Suíte: 125/125 no host e 125/125 no Docker `python:3.12-slim` sem rede, inclusive em clone limpo sem `.env`.
 11. **Trigger de hardening (pendente)** — abrir uma sessão nova e pedir, em linguagem natural, algo como “meu servidor está seguro? quero score, cobertura e drift” ou “analisa a postura Linux e me mostra as top 5 correções”. Critério: a skill carrega sozinha, escolhe `hardening-linux.md` + `harden_check.py`, não trata a primeira execução como anomalia e não inventa score sem cobertura. Ainda não executado; é o item que fecha o Lote 7b.
 12. **Portabilidade multi-harness (documentação concluída; implementação pendente)** — o README agora cobre instalação manual em OpenCode, Hermes Agent, Codex, Claude Code, Gemini/Antigravity, Cursor/Cline, chat/API e runtime mínimo. Critérios pendentes: `hermes skills list` reconhecer `gaara`; `/gaara` carregar em sessão nova; `skill_view("gaara", "references/...")` funcionar; scripts rodarem via `terminal`; sem root, controles privilegiados virarem `unknown`; nenhuma saída de ferramenta simulada. `AGENTS.md`, `manifest.json`, `references/agent-contract.md`, `adapters/`, `install.py` e testes de portabilidade ainda não existem.
 
@@ -390,9 +392,9 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 - `unban` e `sweep` só removem bans criados pela ferramenta. Ban externo exige decisão humana e comando manual.
 - O Fail2ban não registra a origem do ban: se o mesmo IP/jail for re-banido manualmente antes do vencimento, o `sweep` pode remover esse ban manual ao aplicar o TTL original.
 - O parse de status assume a saída em inglês `Currently banned:` / `Banned IP list:`. Saída inesperada é tratada como erro (fail-closed).
-- O repositório é **privado**: não é instalável por terceiros e não serve como distribuição pública enquanto continuar assim.
-- A licença é **proprietária**: não há permissão de uso, cópia ou redistribuição. Se o projeto for aberto, a licença pública precisa ser escolhida antes da publicação.
-- O histórico Git já contém planejamento interno, caminhos pessoais (`/home/matheus/...`), exemplos com `matheus` e detalhes do host de teste. Apagar o arquivo depois **não** remove isso do histórico; tornar público exigiria sanitização e, provavelmente, um novo histórico.
+- O repositório é **público** e distribuído sob MIT desde 2026-10-26.
+- O histórico Git anterior à publicação contém planejamento interno, caminhos pessoais, exemplos com o nome do mantenedor e detalhes do host de teste. Apagar o arquivo em um commit novo **não** remove isso do histórico; a sanitização do histórico ainda é uma tarefa pendente.
+- A sanitização do planejamento no HEAD foi parcial; ele continua sendo um documento histórico e não deve ser instalado no runtime do agente.
 - Os fixtures `tests/corpus/php-vulnerable/config.php` e o `.env` gerado contêm segredos **falsos**. Scanners de segredo podem sinalizá-los; isso não indica credencial real.
 - Ainda não há CI, branch protection, commits/tags assinados nem varredura automatizada de segredos no push. A validação é local e no sandbox Docker.
 - A portabilidade multi-harness está **documentada e manual**. Não existem `install.py`, `adapters/`, `AGENTS.md`, `manifest.json`, `references/agent-contract.md` nem testes automatizados de portabilidade.
@@ -453,6 +455,7 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 | 2026-10-25 | `php_audit.py` é lexical, não parser | Cobre alto sinal sem executar código; fluxo entre arquivos, short tags, construtor PHP 4 e `assert()` com string ficam declarados como revisão manual |
 | 2026-10-25 | Repositório **privado** no GitHub | Projeto em concepção; reduz exposição, preserva a opção de licença e evita publicação acidental de planejamento/PII |
 | 2026-10-25 | Licença **proprietária / all rights reserved** | O usuário quer proteger a ideia enquanto projeta; `SKILL.md` e `README.md` deixaram de declarar MIT e `LICENSE` formaliza a restrição |
+| 2026-10-26 | Repositório **público** e licença **MIT** | Abertura formal do código; README, LICENSE e frontmatter foram atualizados para a distribuição pública |
 | 2026-10-25 | Branches `main` + remote `gaara_skill` | Nome do repositório diferente do nome da skill (`gaara`) é aceitável; o diretório de instalação e o frontmatter continuam `gaara` |
 | 2026-10-25 | `.gitignore` e `.dockerignore` explícitos | Evitam config local, `.env`, auditoria, chaves e caches no Git e no contexto de build da imagem |
 | 2026-10-25 | Fixture `.env` do corpus PHP é gerado no teste | Clone limpo roda a suíte sem versionar `.env`; o segredo falso não entra no histórico |
@@ -474,13 +477,13 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 
 | Item | Valor |
 |---|---|
-| Repositório | `git@github.com:matheFontenele/gaara_skill.git` |
-| Visibilidade | **privada** (decisão do titular) |
+| Repositório | `https://github.com/matheFontenele/gaara_skill` |
+| Visibilidade | **pública** desde 2026-10-26 |
 | Branch principal | `main` |
 | Último commit remoto | `origin/main` (hash volátil; consultar `git ls-remote --heads origin`) |
-| Licença | proprietária — todos os direitos reservados |
-| Distribuição pública | não; o código não é instalável por terceiros enquanto o repo estiver privado |
-| Fonte da verdade local | `/home/matheus/skills/segurity` |
+| Licença | MIT desde 2026-10-26; a fase anterior era proprietária |
+| Distribuição pública | sim; clone via HTTPS ou SSH |
+| Fonte da verdade local | `/caminho/para/gaara_skill` |
 | Instalação no OpenCode | symlink `~/.config/opencode/skills/gaara` |
 | Instalação no Hermes | symlink `~/.hermes/skills/security/gaara` |
 | Instalação no Codex | symlink `~/.codex/skills/gaara` |
@@ -506,13 +509,14 @@ Validação antes do commit de documentação:
 
 ### 15.3 Licença e direitos
 
-O projeto **não é open source** neste momento. O arquivo `LICENSE` declara copyright de 2026 e todos os direitos reservados; não concede permissão de uso, cópia, modificação, distribuição, sublicenciamento ou venda sem autorização escrita. `SKILL.md` usa `license: Proprietary` e o README explica a restrição.
+**Estado atual (2026-10-26):** o projeto é open source sob a licença **MIT**. O `LICENSE`, o `README.md` e o frontmatter do `SKILL.md` foram atualizados. O texto abaixo registra a decisão anterior, mantida como histórico.
 
-Consequências práticas:
+A fase privada usava licença proprietária, sem permissão de uso, cópia, modificação, distribuição, sublicenciamento ou venda sem autorização escrita. `SKILL.md` usava `license: Proprietary`.
 
-- colaboradores só devem ser adicionados com confiança e, se houver troca de código, com acordo escrito;
-- um pull request externo não deve ser aceito sem definir direitos de contribuição (CLA/DCO) e sem compatibilidade com a licença;
-- se o projeto for aberto, a licença pública precisa ser escolhida **antes** do push: AGPL-3.0 para copyleft forte, MIT/Apache-2.0 para adoção ampla, ou source-available para restringir uso comercial;
+Consequências práticas da fase atual:
+
+- contribuições são aceitas sob a mesma licença MIT;
+- não é necessário CLA/DCO para contribuições compatíveis com MIT;
 - o nome **Gaara** é de um personagem de terceiro; para uso comercial, vale verificar marca ou escolher um nome original.
 
 ### 15.4 Higiene de segredos e dados
@@ -536,14 +540,14 @@ Ainda assim, scanners como `gitleaks`/`trufflehog` podem gerar alertas nesses fi
 
 ### 15.5 Dados que permanecem no histórico
 
-Como o repositório é privado, o planejamento completo foi mantido. Isso inclui:
+O repositório tornou-se público em 2026-10-26. O planejamento completo ficou visível e ainda pode conter:
 
-- caminhos absolutos (`/home/matheus/skills/segurity`);
-- exemplos de aprovação com `matheus`;
-- detalhes do host de teste (Ubuntu 26.04.1, portas 8080/8081/8085/8501 e MySQL em 3307);
+- caminhos absolutos da máquina do mantenedor;
+- exemplos de aprovação com o nome do mantenedor;
+- detalhes do host de teste;
 - registros de aceite e decisões internas.
 
-Isso é aceitável no estado privado. Se o repositório for tornar-se público, **apagar o arquivo em um commit novo não remove o conteúdo do histórico**. O caminho seguro é sanitizar e, se necessário, criar um repositório novo com histórico limpo — ou reescrever o histórico com `git filter-repo` antes de qualquer publicação.
+O HEAD foi parcialmente sanitizado, mas **apagar o arquivo em um commit novo não remove o conteúdo do histórico anterior**. O caminho seguro é sanitizar e, se necessário, criar um repositório novo com histórico limpo — ou reescrever o histórico com `git filter-repo`. Enquanto isso, não instale o planejamento no runtime do agente.
 
 ### 15.6 Rotina de atualização
 
@@ -568,12 +572,13 @@ git push
 
 Ainda não há CI nem branch protection; a disciplina é manual. Commits e tags assinados com GPG também ficam como melhoria futura.
 
-### 15.7 Checklist antes de tornar público
+### 15.7 Checklist de publicação
 
-- [ ] Decidir a licença pública (AGPL-3.0, MIT/Apache-2.0 ou source-available).
-- [ ] Substituir caminhos pessoais e `matheus` por valores genéricos.
+- [x] Licença pública definida: MIT (2026-10-26).
+- [x] Repositório tornado público.
+- [x] Substituir caminhos pessoais e o nome do mantenedor por valores genéricos no HEAD.
 - [ ] Sanitizar registros de aceite com dados do host e portas.
-- [ ] Decidir se o planejamento interno será publicado.
+- [x] Planejamento interno publicado junto com o repositório; revisão de PII pendente.
 - [ ] Confirmar que nenhum `.env`, `assets/config.json`, `.jsonl` ou chave real entrou no histórico.
 - [ ] Rodar varredura de segredos no histórico completo, não só no HEAD.
 - [ ] Tratar os “segredos” falsos dos fixtures e documentar o falso positivo.
@@ -623,7 +628,7 @@ O Hermes é o primeiro alvo não-OpenCode porque o encaixe é quase direto:
 - expõe o terminal como `terminal` e leitura como `read_file`;
 - permite `/gaara` e conversa natural.
 
-Instalação local, adequada ao repositório privado:
+Instalação local por symlink ou cópia; o repositório é público desde 2026-10-26:
 
 ```bash
 mkdir -p ~/.hermes/skills/security
@@ -647,10 +652,10 @@ Cuidados específicos:
 
 - **Escrita:** o Hermes pode editar skills via `skill_manage`. Com symlink, isso pode alterar o repositório. Usar `skills.write_approval: true` ou instalar uma cópia de runtime.
 - **Ativação condicional:** não usar `requires_toolsets: [terminal]`. Isso esconderia a skill em ambientes sem terminal; o correto é carregar e degradar.
-- **Repositório privado:** `hermes skills install` por URL/GitHub depende de acesso; a instalação local por symlink/cópia é o caminho documentado.
+- **Repositório público:** `hermes skills install` por URL/GitHub pode funcionar; a instalação local por symlink/cópia continua sendo o caminho documentado.
 - **Scanner:** o Hermes pode rodar SkillEvaluator; fixtures com segredos falsos e caminhos pessoais devem ficar fora do runtime instalado.
 - **Descrição:** o padrão de authoring do Hermes recomenda descrição curta; a descrição atual do Gaara é rica em gatilhos. Antes de encurtar, medir o efeito no carregamento do OpenCode.
-- **Frontmatter:** `version` e `metadata.hermes` (tags/categoria) são recomendados, mas ainda não foram adicionados.
+- **Frontmatter:** `version` foi adicionado; `metadata.hermes` (tags/categoria) ainda é recomendado, mas não foi adicionado.
 
 ### 16.4 Matriz de harnesses
 
@@ -664,7 +669,7 @@ Cuidados específicos:
 | Cursor/Cline | Não nativamente | regra do projeto | Ponteiro para `SKILL.md`, referências e scripts |
 | Chat/API genérica | Não | prompt + anexos | Sem filesystem, entregar comandos para execução humana |
 
-Em outra máquina, `/home/matheus/skills/segurity` não existe. O procedimento é clonar o repositório privado e usar o diretório do clone como raiz; o README usa `GAARA_REPO` para evitar caminho fixo. A cópia em `.zip` funciona para instalação, mas não para `git pull`.
+Em outra máquina, `/caminho/para/gaara_skill` não existe. O procedimento é clonar o repositório público e usar o diretório do clone como raiz; o README usa `GAARA_REPO` para evitar caminho fixo. A cópia em `.zip` funciona para instalação, mas não para `git pull`.
 
 ### 16.5 Contrato de capacidades
 
@@ -688,8 +693,8 @@ Alvo recomendado, sem quebrar o OpenCode:
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications.
-version: 2.2.0
-license: Proprietary
+version: 2.4.0
+license: MIT
 metadata:
   hermes:
     tags: [security, blue-team, linux, logs, hardening]
@@ -760,7 +765,7 @@ O instalador deve:
 
 ### 16.10 Riscos e limitações
 
-- Portabilidade **não** significa distribuível: a licença proprietária continua valendo.
+- Portabilidade **não** significa que todos os harnesses foram validados; a licença vigente é MIT.
 - Caminhos de harness podem mudar entre versões; o README precisa ser revalidado.
 - Symlink é conveniente, mas permite escrita do agente; approval gate ou cópia read-only é mais seguro.
 - O scanner do Hermes pode sinalizar fixtures com segredos falsos; instalar o runtime subset evita o ruído.
