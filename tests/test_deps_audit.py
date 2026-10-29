@@ -375,6 +375,51 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(err, "", msg=err)
         return code, json.loads(out)
 
+    def test_querybatch_advisory_ids_are_hydrated_from_full_osv_records(self) -> None:
+        package = da.Package("packagist", "laravel/framework", "11.46.1", "composer.lock", 1)
+        queries, _ = da.osv_payload([package])
+        payload = {"queries": queries}
+        advisory_id = "GHSA-example-1234-5678"
+        da.cache_store(self.cache / "osv", da.osv_cache_url(payload), {
+            "results": [{"vulns": [{"id": advisory_id, "modified": "2026-10-01T00:00:00Z"}]}]
+        })
+        full_record = {
+            "id": advisory_id,
+            "aliases": ["CVE-2026-12345"],
+            "summary": "Example advisory",
+            "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:L"}],
+            "database_specific": {"severity": "HIGH"},
+            "affected": [{"package": {"name": "laravel/framework"},
+                          "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"},
+                                                                          {"fixed": "12.60.0"}]}]}],
+        }
+        da.cache_store(self.cache / "osv", da.osv_vuln_url(advisory_id), full_record)
+
+        results, _, index, detail_errors = da.osv_query(
+            [package], cache_dir=self.cache, offline=True, refresh=False,
+        )
+        hit = da.parse_osv_vuln(results[0]["vulns"][0], index[0])
+        self.assertEqual(detail_errors, [])
+        self.assertEqual(hit.aliases, ["CVE-2026-12345"])
+        self.assertEqual(hit.cve_id, "CVE-2026-12345")
+        self.assertEqual(hit.fixed, "12.60.0")
+        severity, _ = da.hit_severity(hit, internet_exposed=False, epss_threshold=0.1)
+        self.assertEqual(severity, "alto")
+
+    def test_querybatch_sparse_record_without_details_is_declared_not_evaluated(self) -> None:
+        package = da.Package("packagist", "laravel/framework", "11.46.1", "composer.lock", 1)
+        queries, _ = da.osv_payload([package])
+        payload = {"queries": queries}
+        da.cache_store(self.cache / "osv", da.osv_cache_url(payload), {
+            "results": [{"vulns": [{"id": "GHSA-missing-details", "modified": "2026-10-01T00:00:00Z"}]}]
+        })
+        results, _, _, detail_errors = da.osv_query(
+            [package], cache_dir=self.cache, offline=True, refresh=False,
+        )
+        self.assertEqual(len(results[0]["vulns"]), 1)
+        self.assertEqual(len(detail_errors), 1)
+        self.assertIn("severidade/faixa corrigida não avaliadas", detail_errors[0])
+
     def test_findings_and_evidence(self) -> None:
         code, result = self._run([])
         self.assertEqual(code, 3)

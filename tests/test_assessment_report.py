@@ -58,6 +58,17 @@ class AssessmentTests(unittest.TestCase):
         self.assertEqual(result["findings"][0]["sources"], ["api", "web"])
         self.assertEqual(result["findings"][0]["occurrences"], 2)
 
+    def test_counts_advisories_separately_from_cves(self) -> None:
+        result = ar.build_assessment([("deps", report(
+            "deps", "supply-chain/known-vulnerability", severity="alto",
+            title="GHSA-example-1234-5678 em pacote 1.0",
+            observations={"package": "pacote", "installed": "1.0",
+                          "aliases": ["CVE-2026-12345"]},
+        ))])
+        self.assertEqual(result["summary"]["unique_advisories"], 1)
+        self.assertEqual(result["summary"]["unique_cves"], 1)
+        self.assertIn("**Avisos únicos:** 1", ar.render_markdown(result))
+
     def test_reports_coverage_and_unknowns(self) -> None:
         source = report("deps", "cve/CVE-2026-12345", observations={"aliases": ["CVE-2026-12345"]},
                         summary={"coverage": {"dependencies": 3, "manifests_found": 2,

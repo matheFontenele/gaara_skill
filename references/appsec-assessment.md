@@ -100,6 +100,8 @@ Ordem de decisão, não de execução:
 3. **EPSS** ordena o que não está em KEV.
 4. **NVD** confirma CVSS oficial e CWE.
 
+**Detalhe da integração OSV:** `POST /v1/querybatch` retorna somente `id` e `modified` para cada advisory; para obter aliases, severidade, faixa afetada e versões corrigidas, `deps_audit.py` também consulta `GET /v1/vulns/{id}` e guarda a resposta no cache local. Se esse segundo passo falhar, os detalhes devem aparecer como **não avaliados**, nunca ser tratados como se viessem completos da resposta em lote. A consulta envia nomes de pacotes e versões, não arquivos `.env` ou conteúdo do projeto.
+
 ### 4.4 Avaliar código e configuração
 
 ```bash

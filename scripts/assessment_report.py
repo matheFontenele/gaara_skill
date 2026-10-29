@@ -195,6 +195,7 @@ def build_assessment(reports: list[tuple[str, dict[str, Any]]]) -> dict[str, Any
     counts = Counter({level: 0 for level in SEVERITY_ORDER})
     kev_unique: set[str] = set()
     cves: set[str] = set()
+    advisories: set[str] = set()
 
     for label, report in reports:
         scan = report.get("scan", {})
@@ -229,6 +230,8 @@ def build_assessment(reports: list[tuple[str, dict[str, Any]]]) -> dict[str, Any
             identity = _finding_identity(label, finding)
             observations = finding.get("observations") or {}
             advisory = _advisory_id(finding)
+            if advisory:
+                advisories.add(advisory)
             if advisory.startswith("CVE-"):
                 cves.add(advisory)
             if observations.get("kev"):
@@ -300,6 +303,7 @@ def build_assessment(reports: list[tuple[str, dict[str, Any]]]) -> dict[str, Any
             "headline": headline,
             "reports_received": len(reports),
             "unique_findings": len(findings),
+            "unique_advisories": len(advisories),
             "severity_counts": dict(counts),
             "unique_cves": len(cves),
             "findings_with_kev": len(kev_unique),
@@ -332,7 +336,8 @@ def render_markdown(assessment: dict[str, Any]) -> str:
         "## O que os relatórios encontraram",
         "",
         (f"**Achados únicos:** {summary['unique_findings']} · "
-         f"**CVEs únicos identificados:** {summary['unique_cves']} · "
+         f"**Avisos únicos:** {summary['unique_advisories']} · "
+         f"**CVEs identificados:** {summary['unique_cves']} · "
          f"**Achados KEV:** {summary['findings_with_kev']}"),
         "",
         "| Gravidade técnica | Quantidade | Como interpretar |\n|---|---:|---|",
