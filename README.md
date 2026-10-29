@@ -8,7 +8,7 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 
 | Item | Estado |
 |---|---|
-| Versão | 2.6 |
+| Versão | 2.7 |
 | Testes | 170/170 no host e no sandbox Docker |
 | Harnesses documentados | OpenCode, Hermes Agent, Codex, Claude Code, Gemini/Antigravity e agentes genéricos |
 | Distribuição | pública; clone via HTTPS ou SSH |
@@ -27,14 +27,16 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 | CVE emergencial | “saiu um CVE”, “sou afetado?”, “tem patch?” | Avaliação da stack, mitigação e prazo |
 | Stack EOL | “PHP 5.6”, “sistema legado”, “não tem patch” | Contenção + migração, sem prometer patch inexistente |
 | Código PHP | “tem eval/SQL injection no código?”, “o que quebra no PHP 8?” | Auditoria estática e bloqueios de migração |
-| Vulnerabilidades do projeto | “meu projeto tem alguma vulnerabilidade?”, “tem CVE nas dependências?”, “como estamos no OWASP?” | Inventário, CVE priorizado por KEV/EPSS e cobertura declarada |
+| Vulnerabilidades do projeto | “meu projeto tem alguma vulnerabilidade?”, “tem CVE nas dependências?”, “como estamos no OWASP?” | Resumo em linguagem clara, próximos passos e detalhes técnicos com cobertura declarada |
 | SBOM, CI e comparação | “gera SBOM/SARIF”, “o que mudou desde a última avaliação?” | CycloneDX, SPDX, SARIF 2.1.0 e delta entre relatórios JSON |
 | Ação Fail2ban | “bane esse IP”, “posso executar?” | Dry-run; ban/unban só com aprovação explícita |
 | Relatório | “como documento isso?” | Relatório técnico ou executivo em português |
 
 **Fora de escopo:** pentest, exploit, scan em terceiros, bypass de controle, engenharia reversa de malware e resposta a incidente em Windows/Active Directory.
 
-A rotina de vulnerabilidades do projeto responde sempre em três blocos: **veredito**, **cobertura** e **não avaliado**. "Nenhum CVE encontrado" nunca vira "está seguro" — vira "nenhuma vulnerabilidade conhecida nestas fontes, com esta cobertura".
+A Gaara começa pelo **que foi encontrado, o que isso pode significar e qual é o próximo passo seguro**. Ela separa fatos de hipóteses e deixa os detalhes técnicos em seguida — sem esconder evidências ou limites. "Versão associada a um aviso" não significa automaticamente que houve ataque ou vazamento.
+
+Exemplo: em vez de começar com “GHSA, CVSS 8.9”, a resposta explica que foi encontrada uma versão relacionada a um aviso, o que poderia acontecer sob certas condições e o que ainda precisa ser confirmado. A sigla, a fonte e a versão corrigida aparecem nos detalhes técnicos.
 
 ---
 
@@ -608,6 +610,7 @@ Referências principais:
 - `references/legacy-stacks.md` — PHP 5/EOL;
 - `references/emergency-cve.md` — CVE emergencial;
 - `references/appsec-assessment.md` — vulnerabilidades do projeto e mapa OWASP Top 10:2025;
+- `references/security-communication.md` — explicações claras, distinção entre fato e hipótese e recomendações para não especialistas;
 - `references/vuln-sources.md` — OSV, NVD, KEV, EPSS: endpoints, cache e citação;
 - `references/incident-response.md` — resposta a incidente;
 - `references/EXTENDING.md` — como adicionar módulo.
