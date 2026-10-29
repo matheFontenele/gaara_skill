@@ -20,6 +20,9 @@ Uso:
     ./deps_audit.py . --online
     ./deps_audit.py . --online --nvd off --cache-dir ~/.cache/gaara
     ./deps_audit.py . --online --offline            # usa apenas o cache
+    ./deps_audit.py . --format cyclonedx --output sbom.cdx.json
+    ./deps_audit.py . --format sarif --output results.sarif
+    ./deps_audit.py --compare before.json after.json --format md
     ./deps_audit.py --list-parsers
 
 Códigos de saída:
@@ -48,6 +51,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -59,8 +63,9 @@ except ModuleNotFoundError:  # pragma: no cover - ambiente antigo
     tomllib = None  # type: ignore[assignment]
 
 SCHEMA_VERSION = "1.1"
+GAARA_VERSION = "2.6.0"
 TOOL = "deps_audit"
-USER_AGENT = "gaara-deps-audit/1.1 (+https://github.com/matheFontenele/gaara_skill)"
+USER_AGENT = f"gaara-deps-audit/{GAARA_VERSION} (+https://github.com/matheFontenele/gaara_skill)"
 EXCERPT_MAX = 500
 MAX_FILES = 20000
 HTTP_TIMEOUT = 20
@@ -1391,6 +1396,30 @@ def inventory_findings(inventory: Inventory, root: Path) -> list[dict[str, Any]]
 # ---------------------------------------------------------------- resultado
 
 
+def inventory_records(inventory: Inventory) -> list[dict[str, Any]]:
+    """Versões resolvidas para exportação SBOM e comparação posterior."""
+    grouped: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    for package in inventory.packages + inventory.docker_images:
+        kind = "container" if package.ecosystem == "docker" else "library"
+        key = (kind, package.ecosystem, package.name.lower(), package.version)
+        record = grouped.setdefault(key, {
+            "type": kind,
+            "ecosystem": package.ecosystem,
+            "name": package.name,
+            "version": package.version,
+            "scope": package.scope,
+            "pinned": package.pinned,
+            "sources": [],
+        })
+        if package.scope == "runtime":
+            record["scope"] = "runtime"
+        if package.source not in record["sources"]:
+            record["sources"].append(package.source)
+    return sorted(grouped.values(), key=lambda r: (
+        r["ecosystem"], r["name"].lower(), r["version"], r["type"]
+    ))
+
+
 def build_result(*, inventory: Inventory, hits: list[Hit], sources: list[SourceMeta],
                  root: Path, paths: list[Path], limits: dict[str, Any],
                  now: datetime, host: str, scan_id: str, queried: int,
@@ -1450,6 +1479,7 @@ def build_result(*, inventory: Inventory, hits: list[Hit], sources: list[SourceM
         "dependencies": len(inventory.packages),
         "dependencies_unpinned": len(inventory.unpinned),
         "docker_images": len(inventory.docker_images),
+        "inventory": inventory_records(inventory),
         "queried": queried,
         "with_advisory": len({(h.package.name, h.osv_id) for h in hits}),
         "skipped_ecosystems": sorted(set(skipped_ecosystems)),
@@ -1563,6 +1593,299 @@ def validate(result: dict[str, Any]) -> list[str]:
         if None not in (found, parsed, failed) and parsed + failed != found:
             errors.append("coverage: manifests_parsed + manifests_failed != manifests_found")
     return errors
+
+
+PURL_TYPE = {
+    "packagist": "composer", "npm": "npm", "pypi": "pypi", "go": "golang",
+    "crates": "cargo", "rubygems": "gem", "maven": "maven", "nuget": "nuget",
+}
+
+
+def purl_for(record: dict[str, Any]) -> str | None:
+    ecosystem = record.get("ecosystem")
+    name = str(record.get("name", ""))
+    version = str(record.get("version", ""))
+    purl_type = PURL_TYPE.get(ecosystem)
+    if not purl_type or not name or not version:
+        return None
+    # Preserve purl namespace separators; quote each path segment separately.
+    encoded_name = "/".join(urllib.parse.quote(part, safe=".-_~") for part in name.split("/"))
+    if ecosystem == "maven" and ":" in name:
+        group, artifact = name.split(":", 1)
+        encoded_name = f"{urllib.parse.quote(group, safe='.-_~')}/{urllib.parse.quote(artifact, safe='.-_~')}"
+    return f"pkg:{purl_type}/{encoded_name}@{urllib.parse.quote(version, safe='.+-~')}"
+
+
+def make_sbom(report: dict[str, Any], fmt: str) -> dict[str, Any]:
+    """Exporta inventário resolvido sem inventar hashes, licenças ou relações."""
+    coverage = report.get("summary", {}).get("coverage", {})
+    records = coverage.get("inventory")
+    if not isinstance(records, list):
+        raise ValueError("relatório não contém summary.coverage.inventory")
+    canonical = json.dumps(records, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    created = report.get("scan", {}).get("finished_at") or iso(utcnow())
+
+    if fmt == "cyclonedx":
+        serial = uuid.uuid5(uuid.NAMESPACE_URL, f"urn:gaara:sbom:{digest}")
+        components: list[dict[str, Any]] = []
+        for record in records:
+            component: dict[str, Any] = {
+                "type": "container" if record.get("type") == "container" else "library",
+                "name": record["name"],
+                "version": record["version"],
+                "scope": "excluded" if record.get("scope") == "dev" else "required",
+                "properties": [
+                    {"name": "gaara:ecosystem", "value": str(record.get("ecosystem", "unknown"))},
+                    {"name": "gaara:pinned", "value": str(bool(record.get("pinned"))).lower()},
+                    {"name": "gaara:source", "value": ", ".join(record.get("sources") or [])},
+                ],
+            }
+            purl = purl_for(record)
+            if purl:
+                component["purl"] = purl
+            components.append(component)
+        return {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.6",
+            "serialNumber": f"urn:uuid:{serial}",
+            "version": 1,
+            "metadata": {
+                "timestamp": created,
+                "tools": {"components": [{"type": "application", "name": "Gaara deps_audit",
+                                            "version": GAARA_VERSION}]},
+                "component": {"type": "application", "name": "Project dependency inventory"},
+            },
+            "components": components,
+        }
+
+    if fmt == "spdx":
+        namespace = f"https://gaara.invalid/spdx/{digest}"
+        packages: list[dict[str, Any]] = []
+        relationships: list[dict[str, str]] = []
+        for index, record in enumerate(records, 1):
+            spdx_id = f"SPDXRef-Package-{index}"
+            packages.append({
+                "name": record["name"],
+                "SPDXID": spdx_id,
+                "versionInfo": record["version"],
+                "downloadLocation": "NOASSERTION",
+                "filesAnalyzed": False,
+                "licenseConcluded": "NOASSERTION",
+                "licenseDeclared": "NOASSERTION",
+                "copyrightText": "NOASSERTION",
+                "primaryPackagePurpose": "CONTAINER" if record.get("type") == "container" else "LIBRARY",
+                "externalRefs": ([{
+                    "referenceCategory": "PACKAGE-MANAGER",
+                    "referenceType": "purl",
+                    "referenceLocator": purl_for(record),
+                }] if purl_for(record) else []),
+                "sourceInfo": ", ".join(record.get("sources") or []),
+            })
+            relationships.append({
+                "spdxElementId": "SPDXRef-DOCUMENT",
+                "relationshipType": "DESCRIBES",
+                "relatedSpdxElement": spdx_id,
+            })
+        return {
+            "spdxVersion": "SPDX-2.3",
+            "dataLicense": "CC0-1.0",
+            "SPDXID": "SPDXRef-DOCUMENT",
+            "name": "Gaara project dependency inventory",
+            "documentNamespace": namespace,
+            "creationInfo": {
+                "creators": [f"Tool: Gaara-deps_audit-{GAARA_VERSION}"],
+                "created": created,
+            },
+            "packages": packages,
+            "relationships": relationships,
+        }
+    raise ValueError(f"formato SBOM desconhecido: {fmt}")
+
+
+def sarif_report(report: dict[str, Any]) -> dict[str, Any]:
+    """Converte findings para SARIF 2.1.0; mantém mensagens sem texto executável."""
+    findings = report.get("findings") or []
+    rules_by_id: dict[str, dict[str, Any]] = {}
+    results: list[dict[str, Any]] = []
+    for finding in findings:
+        rule_id = str(finding.get("category") or "gaara/finding")
+        rules_by_id.setdefault(rule_id, {
+            "id": rule_id,
+            "shortDescription": {"text": clean_text(str(finding.get("title", rule_id)), 120)},
+            "help": {"text": clean_text(str(finding.get("impact", "")), 500)},
+            "properties": {"tags": list(finding.get("frameworks") or [])},
+        })
+        severity = finding.get("severity", "baixo")
+        level = "error" if severity in {"critico", "alto"} else "warning" if severity == "medio" else "note"
+        result: dict[str, Any] = {
+            "ruleId": rule_id,
+            "level": level,
+            "message": {"text": clean_text(str(finding.get("title", rule_id)), 500)},
+            "properties": {
+                "gaara:id": finding.get("id"),
+                "gaara:severity": severity,
+                "gaara:confidence": finding.get("confidence"),
+                "gaara:recommendation": finding.get("recommendation", {}),
+            },
+        }
+        locations: list[dict[str, Any]] = []
+        for evidence in finding.get("evidence") or []:
+            source_type = evidence.get("source_type")
+            source = str(evidence.get("source") or "")
+            if source_type not in {"code", "log"} or not source or source.startswith("/"):
+                continue
+            location: dict[str, Any] = {
+                "physicalLocation": {"artifactLocation": {"uri": source}},
+                "message": {"text": clean_text(str(evidence.get("excerpt", "")), 500)},
+            }
+            match = re.search(r"(?:^|:)(\d+)(?:-\d+)?$", str(evidence.get("locator", "")))
+            if match:
+                location["physicalLocation"]["region"] = {"startLine": int(match.group(1))}
+            locations.append(location)
+        if locations:
+            result["locations"] = locations
+        results.append(result)
+    return {
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {"driver": {
+                "name": "Gaara deps_audit",
+                "version": GAARA_VERSION,
+                "informationUri": "https://github.com/matheFontenele/gaara_skill",
+                "rules": list(rules_by_id.values()),
+            }},
+            "results": results,
+            "properties": {"gaara:coverage": report.get("summary", {}).get("coverage", {})},
+        }],
+    }
+
+
+def _component_key(item: dict[str, Any]) -> tuple[str, str, str]:
+    return (str(item.get("ecosystem", "")).lower(),
+            str(item.get("name", "")).lower(), str(item.get("version", "")))
+
+
+def _finding_key(item: dict[str, Any]) -> tuple[str, str, str]:
+    observations = item.get("observations") or {}
+    return (str(item.get("category", "")), str(observations.get("package", "")).lower(),
+            str(observations.get("installed", "")))
+
+
+def _coverage_signature(coverage: dict[str, Any]) -> dict[str, Any]:
+    """Ignora timestamps/cache-hit para comparar cobertura, não o instante."""
+    sources = []
+    for source in coverage.get("sources") or []:
+        sources.append({
+            "name": source.get("name"),
+            "available": not bool(source.get("error")),
+            "stale": bool(source.get("stale")),
+        })
+    return {
+        key: coverage.get(key) for key in (
+            "manifests_found", "manifests_parsed", "manifests_failed",
+            "dependencies", "dependencies_unpinned", "docker_images", "queried",
+            "skipped_ecosystems", "not_evaluated",
+        )
+    } | {"sources": sorted(sources, key=lambda s: str(s["name"]))}
+
+
+def compare_reports(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
+    """Compara inventário e advisories por identidade estável, não IDs F-xxx."""
+    old_coverage = before.get("summary", {}).get("coverage", {})
+    new_coverage = after.get("summary", {}).get("coverage", {})
+    old_inventory = old_coverage.get("inventory")
+    new_inventory = new_coverage.get("inventory")
+    if not isinstance(old_inventory, list) or not isinstance(new_inventory, list):
+        raise ValueError("os dois relatórios precisam conter summary.coverage.inventory")
+
+    old_components = {_component_key(x): x for x in old_inventory}
+    new_components = {_component_key(x): x for x in new_inventory}
+    old_keys, new_keys = set(old_components), set(new_components)
+    added_keys, removed_keys = set(new_keys - old_keys), set(old_keys - new_keys)
+    old_by_name: dict[tuple[str, str], list[tuple[str, str, str]]] = {}
+    new_by_name: dict[tuple[str, str], list[tuple[str, str, str]]] = {}
+    for key in removed_keys:
+        old_by_name.setdefault(key[:2], []).append(key)
+    for key in added_keys:
+        new_by_name.setdefault(key[:2], []).append(key)
+    updated: list[dict[str, Any]] = []
+    for identity in sorted(set(old_by_name) & set(new_by_name)):
+        old_versions = old_by_name[identity]
+        new_versions = new_by_name[identity]
+        if len(old_versions) == len(new_versions) == 1:
+            old_key, new_key = old_versions[0], new_versions[0]
+            updated.append({"before": old_components[old_key], "after": new_components[new_key]})
+            removed_keys.remove(old_key)
+            added_keys.remove(new_key)
+    added = [new_components[k] for k in sorted(added_keys)]
+    removed = [old_components[k] for k in sorted(removed_keys)]
+    old_findings = {_finding_key(x): x for x in before.get("findings", [])
+                    if str(x.get("category", "")).startswith("cve/")
+                    or x.get("category") == "supply-chain/known-vulnerability"}
+    new_findings = {_finding_key(x): x for x in after.get("findings", [])
+                    if str(x.get("category", "")).startswith("cve/")
+                    or x.get("category") == "supply-chain/known-vulnerability"}
+    old_f, new_f = set(old_findings), set(new_findings)
+    return {
+        "comparison_version": "1.0",
+        "before": {"scan_id": before.get("scan", {}).get("id"),
+                   "finished_at": before.get("scan", {}).get("finished_at")},
+        "after": {"scan_id": after.get("scan", {}).get("id"),
+                  "finished_at": after.get("scan", {}).get("finished_at")},
+        "components": {"added": added, "removed": removed, "updated": updated,
+                       "unchanged": len(old_keys & new_keys)},
+        "vulnerabilities": {
+            "new": [new_findings[k] for k in sorted(new_f - old_f)],
+            "resolved": [old_findings[k] for k in sorted(old_f - new_f)],
+            "persistent": len(old_f & new_f),
+        },
+        "coverage_changed": _coverage_signature(old_coverage) != _coverage_signature(new_coverage),
+        "limitations": [
+            "comparação baseada no inventário e nas fontes de cada relatório; cobertura diferente pode explicar mudanças",
+            "sem summary.coverage.inventory não há comparação de componentes",
+        ],
+    }
+
+
+def render_comparison_markdown(delta: dict[str, Any]) -> str:
+    lines = ["# Comparação de avaliações", "",
+             f"**Antes:** {delta['before'].get('scan_id') or 'sem ID'} ({delta['before'].get('finished_at') or 'sem data'})",
+             f"**Depois:** {delta['after'].get('scan_id') or 'sem ID'} ({delta['after'].get('finished_at') or 'sem data'})",
+             "", "## Componentes", "",
+             f"- Adicionados: {len(delta['components']['added'])}",
+             f"- Atualizados: {len(delta['components']['updated'])}",
+             f"- Removidos: {len(delta['components']['removed'])}",
+             f"- Sem mudança: {delta['components']['unchanged']}", "",
+             "## Vulnerabilidades", "",
+             f"- Novas: {len(delta['vulnerabilities']['new'])}",
+             f"- Resolvidas: {len(delta['vulnerabilities']['resolved'])}",
+             f"- Persistentes: {delta['vulnerabilities']['persistent']}", ""]
+    for heading, key in (("Novas", "new"), ("Resolvidas", "resolved")):
+        lines += [f"### {heading}", ""]
+        items = delta["vulnerabilities"][key]
+        if not items:
+            lines.append("Nenhuma.")
+        else:
+            lines.extend(f"- {item.get('severity', '?')}: {item.get('title', item.get('category', '?'))}"
+                         for item in items)
+        lines.append("")
+    lines += ["### Componentes atualizados", ""]
+    updates = delta["components"].get("updated", [])
+    if updates:
+        lines.extend(
+            f"- {item['before']['ecosystem']} {item['before']['name']}: "
+            f"{item['before']['version']} → {item['after']['version']}"
+            for item in updates
+        )
+    else:
+        lines.append("Nenhum.")
+    lines.append("")
+    lines += ["## Ressalvas", ""] + [f"- {item}" for item in delta["limitations"]]
+    if delta["coverage_changed"]:
+        lines.append("- A cobertura mudou entre as execuções; revise fontes, manifests e itens não avaliados.")
+    return "\n".join(lines) + "\n"
 
 
 def render_markdown(result: dict[str, Any]) -> str:
@@ -1687,8 +2010,11 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--cache-dir", default=None,
                         help="diretório de cache (padrão: ~/.cache/gaara)")
     parser.add_argument("--refresh", action="store_true", help="ignorar cache e reconsultar")
-    parser.add_argument("--format", choices=("json", "md"), default="json")
     parser.add_argument("--output", default=None, help="arquivo de saída (padrão: stdout)")
+    parser.add_argument("--format", choices=("json", "md", "cyclonedx", "spdx", "sarif"),
+                        default="json", help="formato de relatório ou SBOM")
+    parser.add_argument("--compare", nargs=2, metavar=("ANTES.json", "DEPOIS.json"),
+                        help="compara dois relatórios JSON da deps_audit")
     parser.add_argument("--list-parsers", action="store_true", help="listar formatos suportados")
     return parser.parse_args(argv)
 
@@ -1724,6 +2050,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     if args.list_parsers:
         print(list_parsers())
+        return 0
+    if args.compare:
+        if args.format not in {"json", "md"}:
+            print("--compare aceita apenas --format json ou md", file=sys.stderr)
+            return 2
+        try:
+            before = json.loads(Path(args.compare[0]).read_text(encoding="utf-8"))
+            after = json.loads(Path(args.compare[1]).read_text(encoding="utf-8"))
+            delta = compare_reports(before, after)
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            print(f"não foi possível comparar relatórios: {exc}", file=sys.stderr)
+            return 2
+        output = (render_comparison_markdown(delta) if args.format == "md"
+                  else json.dumps(delta, ensure_ascii=False, indent=2))
+        if args.output:
+            Path(args.output).write_text(output + "\n", encoding="utf-8")
+        else:
+            print(output)
         return 0
     if args.inventory:
         args.online = False
@@ -1852,8 +2196,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"validação: {message}", file=sys.stderr)
         return 1
 
-    output = render_markdown(result) if args.format == "md" else json.dumps(
-        result, ensure_ascii=False, indent=2)
+    if args.format in {"cyclonedx", "spdx"}:
+        try:
+            rendered = make_sbom(result, args.format)
+        except ValueError as exc:
+            print(f"não foi possível gerar SBOM: {exc}", file=sys.stderr)
+            return 1
+        output = json.dumps(rendered, ensure_ascii=False, indent=2)
+    elif args.format == "sarif":
+        output = json.dumps(sarif_report(result), ensure_ascii=False, indent=2)
+    elif args.format == "md":
+        output = render_markdown(result)
+    else:
+        output = json.dumps(result, ensure_ascii=False, indent=2)
     if args.output:
         Path(args.output).write_text(output + "\n", encoding="utf-8")
     else:

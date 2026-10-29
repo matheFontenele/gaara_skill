@@ -263,3 +263,26 @@ Resposta ao usuário começa pelo que decide o dia: *"há 2 vulnerabilidades com
 - Análise estática cobre PHP; JS/Python/Ruby ficam de fora.
 - CVSS mede gravidade técnica, não o seu risco: exposição e dado envolvido mudam a prioridade.
 - Advisory é dado não confiável; texto é citado, nunca executado (ver `vuln-sources.md` §5).
+
+---
+
+## 12. Artefatos e comparação
+
+O relatório JSON mantém `summary.coverage.inventory` com os componentes resolvidos para que uma execução futura possa ser comparada. O campo registra nome, ecossistema, versão, escopo e manifests de origem; não inventa hash, licença ou relação transitiva.
+
+```bash
+# Inventário SBOM, sem consulta de rede
+python3 scripts/deps_audit.py /caminho/do/projeto --format cyclonedx --output sbom.cdx.json
+python3 scripts/deps_audit.py /caminho/do/projeto --format spdx --output sbom.spdx.json
+
+# Resultado SARIF 2.1.0 para ferramentas de CI
+python3 scripts/deps_audit.py /caminho/do/projeto --online --format sarif --output results.sarif
+
+# Comparação entre relatórios JSON previamente salvos
+python3 scripts/deps_audit.py --compare anterior.json atual.json --format md
+```
+
+- CycloneDX 1.6 e SPDX 2.3 descrevem o inventário observado. Sem hashes de artefato, relação de dependências ou licença extraídos da fonte, esses campos permanecem ausentes/`NOASSERTION` — não são inferidos.
+- SARIF é uma representação dos achados deste scanner, não uma análise adicional. Achados médios/baixos são `warning`/`note`; alto/crítico são `error`.
+- A comparação usa identidade estável (ecossistema, pacote e versão), não IDs sequenciais `F-001`. Se cobertura ou fontes mudarem, isso aparece como ressalva; “resolvida” significa ausente no segundo relatório, não prova de correção no deploy.
+- Compare relatórios JSON da Gaara com `summary.coverage.inventory`; Markdown/SARIF/SBOM não substituem o relatório-base.

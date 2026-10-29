@@ -8,8 +8,8 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 
 | Item | Estado |
 |---|---|
-| Versão | 2.5 |
-| Testes | 163/163 no host e no sandbox Docker |
+| Versão | 2.6 |
+| Testes | 170/170 no host e no sandbox Docker |
 | Harnesses documentados | OpenCode, Hermes Agent, Codex, Claude Code, Gemini/Antigravity e agentes genéricos |
 | Distribuição | pública; clone via HTTPS ou SSH |
 | Licença | MIT |
@@ -28,6 +28,7 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 | Stack EOL | “PHP 5.6”, “sistema legado”, “não tem patch” | Contenção + migração, sem prometer patch inexistente |
 | Código PHP | “tem eval/SQL injection no código?”, “o que quebra no PHP 8?” | Auditoria estática e bloqueios de migração |
 | Vulnerabilidades do projeto | “meu projeto tem alguma vulnerabilidade?”, “tem CVE nas dependências?”, “como estamos no OWASP?” | Inventário, CVE priorizado por KEV/EPSS e cobertura declarada |
+| SBOM, CI e comparação | “gera SBOM/SARIF”, “o que mudou desde a última avaliação?” | CycloneDX, SPDX, SARIF 2.1.0 e delta entre relatórios JSON |
 | Ação Fail2ban | “bane esse IP”, “posso executar?” | Dry-run; ban/unban só com aprovação explícita |
 | Relatório | “como documento isso?” | Relatório técnico ou executivo em português |
 
@@ -365,6 +366,19 @@ python3 "$GAARA_HOME/scripts/harden_check.py" --baseline /tmp/gaara-baseline.jso
 python3 "$GAARA_HOME/scripts/harden_check.py" --app-root /var/www/app
 ```
 
+Inventário, SBOM, SARIF e comparação:
+
+```bash
+python3 "$GAARA_HOME/scripts/deps_audit.py" /var/www/app --online --format json --output /tmp/antes.json
+python3 "$GAARA_HOME/scripts/deps_audit.py" /var/www/app --format cyclonedx --output /tmp/sbom.cdx.json
+python3 "$GAARA_HOME/scripts/deps_audit.py" /var/www/app --format spdx --output /tmp/sbom.spdx.json
+python3 "$GAARA_HOME/scripts/deps_audit.py" /var/www/app --online --format sarif --output /tmp/results.sarif
+# Na próxima avaliação, repita o mesmo escopo/fontes, salve outro JSON e compare:
+python3 "$GAARA_HOME/scripts/deps_audit.py" --compare /tmp/antes.json /tmp/depois.json --format md
+```
+
+SBOMs refletem somente o inventário reconhecido; não inventam hashes/licenças nem relações que o scanner não observou. SARIF é exportação dos achados, e a comparação não prova mudança no ambiente implantado.
+
 Fail2ban (dry-run por padrão):
 
 ```bash
@@ -623,6 +637,7 @@ Referências principais:
 | `deps_audit.py` não vê um pacote | manifest não reconhecido ou dependência sem versão resolvida | `--list-parsers`; instale o lockfile (`composer install`, `npm install`, `pip-compile`) |
 | `deps_audit.py` falha com 429 | rate limit do NVD | use `NVD_API_KEY`, `--nvd off` ou `--offline` com cache |
 | Relatório de dependência diz "não avaliado" | fonte indisponível, imagem Docker ou código não-PHP | é o comportamento correto; veja `coverage.sources[].error` |
+| Comparação não lista componentes | relatórios antigos sem `summary.coverage.inventory` | gere ambos os relatórios com a versão atual em JSON |
 | Baseline recusado | JSON inválido, versão errada ou symlink | regenere com `--write-baseline` em arquivo regular |
 | Agente sem shell não executa | harness sem terminal | receba o comando e execute manualmente; não aceite saída simulada |
 
