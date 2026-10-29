@@ -1,7 +1,7 @@
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications. Triages auth and web logs for brute force, credential stuffing, scanning, path traversal, exploitation attempts and API abuse; investigates possible compromise; runs guided incident response; audits legacy and end-of-life stacks (PHP 5 and other unpatched runtimes) for dangerous patterns and missing patches; inventories project dependencies and correlates them with known vulnerabilities (CVE via OSV/NVD, active exploitation via CISA KEV, priority via EPSS), mapping findings to OWASP Top 10:2025; recommends and verifies hardening for SSH, firewall, fail2ban, TLS, file permissions and secrets. Use when the user asks to analyze logs, investigate suspicious activity, check server security posture, respond to an incident, evaluate an emergency CVE, check whether a project has vulnerabilities, or harden a server. Also triggers on Portuguese requests about segurança, logs, invasão, vulnerabilidade, OWASP, CVE, hardening and vulnerabilidades.
-version: 2.9.0
+version: 2.10.0
 license: MIT
 ---
 
@@ -96,7 +96,7 @@ Pergunta sobre runtime EOL em outubro/2026 **é** pergunta sobre o PHP2Shell. N�
 
 ### Limitações de versão
 
-Os Lotes 8–11 (avaliação de vulnerabilidades, SBOM/SARIF/comparação, comunicação clara e avaliação guiada) estão concluídos. A consulta OSV em lote é complementada pelo endpoint de detalhes de cada advisory para não perder severidade, alias ou faixa corrigida. O repositório foi publicado em 2026-10-26. O Lote 7b continua pendente: validar gatilhos e registrar aceite em sessão nova nos harnesses. Se o pedido exigir algo fora do escopo (Windows/AD, pentest, malware), declare a limitação em uma frase e ofereça a alternativa defensiva.
+Os Lotes 8–11 (avaliação de vulnerabilidades, SBOM/SARIF/comparação, comunicação clara e avaliação guiada) estão concluídos. A consulta OSV em lote é complementada pelo endpoint de detalhes; versões corrigidas são comparadas com a faixa do release instalado e ficam sem especificar quando a comparação não é segura. O repositório foi publicado em 2026-10-26. O Lote 7b continua pendente: validar gatilhos e registrar aceite em sessão nova nos harnesses. Se o pedido exigir algo fora do escopo (Windows/AD, pentest, malware), declare a limitação em uma frase e ofereça a alternativa defensiva.
 
 `deps_audit.py` cobre dependência de ecossistema e de distro. Não cobre camada de imagem Docker, binário proprietário, código não-PHP nem falha ainda não publicada. Quando a pergunta recair sobre isso, a resposta é "não avaliado" com a fonte que faltou — nunca "sem vulnerabilidade".
 
