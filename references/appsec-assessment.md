@@ -170,33 +170,49 @@ Vulnerabilidade conhecida **não é** comprometimento. Quem responde "fui explor
 
 ## 7. Formato obrigatório da resposta
 
-Três blocos, sempre, nesta ordem:
+Comece com o que uma pessoa responsável precisa decidir. Os detalhes técnicos vêm depois; não abra com uma lista de GHSA, CVSS ou nomes de ferramentas.
 
-### 7.1 Veredito
+### 7.1 Resumo para você
 
-Uma das três frases:
+Em 2–4 linhas, diga:
 
-- `Nenhuma vulnerabilidade conhecida nas fontes consultadas, com a cobertura abaixo.`
-- `N vulnerabilidades conhecidas; M com exploração ativa confirmada (KEV).`
-- `Não é possível responder: não há inventário suficiente.`
+- O que foi encontrado em palavras comuns.
+- Se exige ação agora, investigação ou planejamento — e por quê.
+- O que **não** foi confirmado (ex.: uso do recurso, produção, exploração).
 
-Nunca: "está seguro", "está limpo", "não tem vulnerabilidade".
+Não use “está seguro”, “está limpo”, “foi invadido” ou “credenciais vazaram” sem evidência apropriada. “Versão associada a um aviso” não significa automaticamente que o sistema pode ser explorado.
 
-### 7.2 Cobertura
+### 7.2 Achados e confirmação
+
+Mostre até três prioridades primeiro. Para cada uma, use:
+
+```
+O que encontrei: {fato observado nos arquivos/fontes}
+Por que importa: {consequência possível e condição}
+O que falta confirmar: {uso real, produção, exposição, conta ativa etc.}
+Próximo passo seguro: {uma verificação concreta, antes de alterar}
+Detalhe técnico: {CVE/GHSA, versão, fonte e data}
+```
+
+Informe quantos outros achados existem e mantenha a lista detalhada disponível. Diferencie contagem de pacote+versão, advisories distintos e CVEs únicos; muitos registros repetidos não significam necessariamente muitas falhas distintas.
+
+### 7.3 Cobertura e limites
 
 ```
 Dependências: 118 identificadas · 2 sem versão resolvida
 Manifests:    5 encontrados · 4 lidos · 1 com falha
-Consultadas:  118 (OSV, 2026-10-29T14:02Z) · KEV 2026-10-29 · EPSS 2026-10-29
-Código:       PHP sim (312 arquivos) · JS/Python não avaliados
-Host:         não avaliado nesta execução
+Fontes:       OSV consultado em {data} · KEV {data} · EPSS {data}
+Código:       PHP avaliado · JS/Python não avaliados
+Produção:     não verificada nesta execução
 ```
 
-### 7.3 Não avaliado
+Explique siglas na primeira ocorrência. Se usar “severidade alta”, diga que isso descreve a gravidade técnica do aviso e não confirma exposição ou ataque.
 
-Lista explícita: A01, A06, lógica de negócio, código não-PHP, camadas de imagem, zero-day, serviços de terceiros, o que a fonte não cobriu.
+### 7.4 Não avaliado e próximo passo
 
-Sem esse bloco, a resposta vira promessa. Com ele, vira decisão.
+Liste lacunas relevantes: A01 (controle de acesso), A06 (design), lógica de negócio, código não-PHP, imagens, zero-days, produção, logs ou contas — conforme o que realmente não foi verificado. Termine com **um próximo passo seguro**, seu objetivo e se ele apenas lê dados ou altera algo.
+
+Sem separar achados, cobertura e limites, a resposta pode soar como promessa. Com esses blocos, a pessoa consegue entender o risco sem precisar interpretar o relatório técnico sozinha.
 
 ---
 
@@ -234,7 +250,7 @@ Leitura do resultado:
 | `harden_check` | `display_errors=On` (A10) | corrigir antes de expor |
 | `emergency-cve` | PHP 5.6 sem patch para o CVE de runtime | conter exposição + prazo de migração |
 
-Resposta ao usuário começa pelo que decide o dia: *"há 2 vulnerabilidades com exploração ativa confirmada em dependências; PHP 5.6 não tem correção para o CVE de runtime — o caminho é conter e migrar."* Só depois vem a tabela.
+Resposta para a pessoa responsável: *"Encontrei avisos importantes em duas dependências e o runtime PHP é antigo. Isso merece prioridade, mas ainda precisamos confirmar quais funções afetadas são usadas e comparar as versões com produção. Próximo passo: validar esses dois pontos antes de planejar a atualização; não atualizei nada."* Em seguida vêm as fontes, versões, faixas afetadas e detalhes técnicos. Só diga que existe exploração ativa se a correspondência KEV estiver confirmada e explique que isso não prova ataque contra o sistema.
 
 ---
 

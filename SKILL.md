@@ -1,7 +1,7 @@
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications. Triages auth and web logs for brute force, credential stuffing, scanning, path traversal, exploitation attempts and API abuse; investigates possible compromise; runs guided incident response; audits legacy and end-of-life stacks (PHP 5 and other unpatched runtimes) for dangerous patterns and missing patches; inventories project dependencies and correlates them with known vulnerabilities (CVE via OSV/NVD, active exploitation via CISA KEV, priority via EPSS), mapping findings to OWASP Top 10:2025; recommends and verifies hardening for SSH, firewall, fail2ban, TLS, file permissions and secrets. Use when the user asks to analyze logs, investigate suspicious activity, check server security posture, respond to an incident, evaluate an emergency CVE, check whether a project has vulnerabilities, or harden a server. Also triggers on Portuguese requests about segurança, logs, invasão, vulnerabilidade, OWASP, CVE, hardening and vulnerabilidades.
-version: 2.6.0
+version: 2.7.0
 license: MIT
 ---
 
@@ -59,6 +59,7 @@ Abra **apenas** a referência indicada. Não carregue todas de uma vez.
 
 | Pedido | Referência |
 |---|---|
+| Resposta para público não técnico, explicação de risco ou priorização | `references/security-communication.md` |
 | "analisa esse log", "o que aconteceu ontem", "tem ataque aqui?" | `references/detection-playbook.md` + `scripts/log_triage.py` |
 | "postura", "hardening", "score de segurança", "drift", "auditar o servidor" | `references/hardening-linux.md` + `scripts/harden_check.py` |
 | "baseline", "comportamento anômalo", "beaconing", "correlacionar" | `references/behavioral-detection.md` |
@@ -94,7 +95,7 @@ Pergunta sobre runtime EOL em outubro/2026 **é** pergunta sobre o PHP2Shell. N�
 
 ### Limitações de versão
 
-Não há módulo de análise pendente nesta versão. O Lote 7a (README e instalação) e o Lote 8 (avaliação de vulnerabilidades do projeto) estão concluídos; o repositório foi publicado em 2026-10-26. O Lote 7b é a validação de gatilhos em sessão nova e o registro de aceite nos harnesses. Se o pedido exigir algo fora do escopo (Windows/AD, pentest, malware), declare a limitação em uma frase e ofereça a alternativa defensiva.
+Os Lotes 8–10 (avaliação de vulnerabilidades, SBOM/SARIF/comparação e comunicação em linguagem clara) estão concluídos; o repositório foi publicado em 2026-10-26. O Lote 7b continua pendente: validar gatilhos e registrar aceite em sessão nova nos harnesses. Se o pedido exigir algo fora do escopo (Windows/AD, pentest, malware), declare a limitação em uma frase e ofereça a alternativa defensiva.
 
 `deps_audit.py` cobre dependência de ecossistema e de distro. Não cobre camada de imagem Docker, binário proprietário, código não-PHP nem falha ainda não publicada. Quando a pergunta recair sobre isso, a resposta é "não avaliado" com a fonte que faltou — nunca "sem vulnerabilidade".
 
@@ -172,10 +173,11 @@ Todo achado, sem exceção:
 
 ```
 [SEVERIDADE] Título curto e específico
+Em linguagem clara: o que foi encontrado e por que pode importar
 Evidência:   trecho redigido + fonte (arquivo:linha ou janela temporal)
 Confiança:   alta | média | baixa — e o que falta para confirmar
-Impacto:     o que o atacante consegue, na prática
-Recomendação: ação + comando + risco da ação
+Impacto:     consequência possível + condições ainda não confirmadas
+Recomendação: próximo passo seguro + objetivo + risco da ação
 ```
 
 Regras de redação:
@@ -187,6 +189,7 @@ Regras de redação:
 - Fato externo (CVE, versão, mitigação oficial) sempre com `Fonte:` — URL e data de consulta. Sem fonte, não entra no achado.
 - "Nenhuma vulnerabilidade encontrada" só existe com **cobertura declarada**: o que foi inventariado, quais fontes foram consultadas e o que ficou de fora.
 - Mitigação nunca é apresentada como correção. Se não há patch, diga que não há.
+- Separe explicitamente **confirmado nos arquivos**, **impacto possível** e **ainda não verificado**. Uma versão afetada não prova uso do recurso vulnerável nem exploração.
 
 ## 7. Portão de ação
 
@@ -212,11 +215,15 @@ Para ban, não improvise comando: use `f2b_guard.py`, que já aplica allowlist, 
 ## 8. Formato de saída
 
 - Markdown, direto, sem preâmbulo.
-- Comece pelo que importa: o achado mais grave ou a resposta à pergunta.
+- Comece com **Resumo para você** (2–4 linhas): o que foi encontrado, o que pode significar e se há algo a fazer agora.
 - Tabelas para comparação, listas para ação.
 - Comandos em bloco copiável.
-- No fim: **Próximo passo** — uma ação concreta, não um menu.
-- Se o usuário não é técnico, traduza o impacto em consequência de negócio (dados, disponibilidade, reputação) antes do detalhe técnico.
+- No fim: **Próximo passo seguro** — uma ação concreta, objetivo e se é leitura, usa rede ou altera algo; não ofereça um menu sem recomendação.
+- Escreva para uma pessoa responsável pelo sistema que pode não conhecer segurança: explique siglas na primeira ocorrência, traduza o impacto em consequência prática antes do detalhe técnico e não confunda clareza com simplificação da evidência.
+- Para mais de três achados, destaque até três prioridades, informe quantos itens adicionais existem e preserve os detalhes. Não transforme registros repetidos por versão em “muitas falhas” sem explicar a contagem.
+- Quando a conclusão depender de produção, contas ativas ou exposição, diga isso diretamente. Nunca use “vazou”, “foi invadido” ou “está explorável” sem evidência correspondente.
+
+Consulte `references/security-communication.md` para estrutura, vocabulário e checklist detalhados.
 
 ## 9. Postura
 

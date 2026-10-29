@@ -13,13 +13,14 @@ scripts: []
 
 ## Regras gerais
 
-1. **Ordem:** conclusão → evidência → recomendação. Nunca o contrário.
-2. **Todo achado tem severidade e confiança.**
-3. **Todo trecho de log é redigido** e citado com arquivo e janela.
-4. **"Não observado" é informação válida** — use quando a ausência for relevante.
-5. **Uma recomendação por linha de ação**, com esforço e risco.
-6. **Nada de "possivelmente talvez".** Se não sabe, escreva o que falta para saber.
-7. **Público define a linguagem:** técnico para quem opera, consequência de negócio para quem decide.
+1. **Comece com resumo para a pessoa responsável:** o que foi encontrado, o que pode significar e qual decisão é necessária.
+2. **Separe fato, hipótese e lacuna:** evidência observada ≠ impacto confirmado ≠ comprometimento.
+3. **Todo achado tem severidade e confiança**, traduzidas em linguagem prática; CVSS/KEV/EPSS não substituem contexto.
+4. **Todo trecho de log é redigido** e citado com arquivo e janela.
+5. **"Não observado" e "não avaliado" são diferentes:** diga o que a ferramenta procurou e o que ficou fora do escopo.
+6. **Uma recomendação por linha de ação**, com objetivo, esforço e risco; para ações de alteração, peça aprovação.
+7. **Nada de "possivelmente talvez".** Se não sabe, escreva exatamente o que falta para saber.
+8. **Público define a linguagem:** explique siglas na primeira ocorrência e deixe o detalhe técnico em seção própria.
 
 ---
 
@@ -192,26 +193,27 @@ scripts: []
 # Segurança — {sistema} — {data}
 
 ## Situação
-{uma frase direta: ex.: "O sistema está exposto a uma falha crítica sem correção disponível."}
+{uma frase direta sem siglas: o que foi observado e o nível de ação necessário}
 
-## O que isso significa
-- **Risco:** {roubo de dados / indisponibilidade / controle do servidor}
-- **Probabilidade:** {alta/média/baixa} — {justificativa em linguagem simples}
-- **Quem é afetado:** {clientes / operação interna / apenas o servidor}
+## O que isso significa para o sistema
+{consequência possível, sem afirmar que aconteceu; explique as condições}
 
-## O que já foi feito
-1. {ação}
-2. {ação}
+## O que sabemos e o que falta confirmar
+- **Confirmado:** {fato observado e onde}
+- **Ainda não confirmado:** {uso em produção / exposição / conta ativa / exploração}
+
+## Próximo passo seguro
+{uma verificação específica, o que ela confirma e se é somente leitura}
 
 ## O que precisa de decisão
-| Decisão | Opções | Recomendação | Prazo |
-|---------|--------|--------------|-------|
+| Decisão | Recomendação | Risco/impacto da mudança |
+|---|---|---|
 
-## Prazo e custo de não agir
-{consequência concreta, sem catastrofismo}
+## Limites desta avaliação
+{o que não foi analisado; não use “não houve ataque” se só analisou um recorte de log}
 
 ## Anexo técnico
-{link para o relatório técnico}
+{CVE, CVSS, caminhos/linhas, fontes, datas, comandos e link para relatório técnico}
 ```
 
 ---
@@ -239,9 +241,17 @@ Ao exportar IoCs, **remova dados pessoais desnecessários** e informe a finalida
 ```markdown
 # Vulnerabilidades conhecidas — {projeto} — {data}
 
-## Veredito
-{uma das três frases: nenhuma vulnerabilidade conhecida nas fontes consultadas |
-N vulnerabilidades, M com exploração ativa | não é possível responder sem inventário}
+## Resumo para você
+{em português claro: o que foi encontrado, se há urgência e o que não está confirmado}
+
+## O que isso pode significar
+{impacto possível, explicando condições; não afirmar exploração ou vazamento sem evidência}
+
+## Próximo passo seguro
+{uma verificação concreta antes de atualizar, rotacionar segredo ou alterar produção}
+
+## Detalhes técnicos
+{veredito técnico, CVE/GHSA, CVSS, versões, evidência, fontes e datas}
 
 ## Cobertura
 | Item | Valor |
@@ -254,8 +264,8 @@ N vulnerabilidades, M com exploração ativa | não é possível responder sem i
 | Host avaliado | não nesta execução |
 
 ## Achados prioritários
-| Sev. | ID | Pacote | Instalado | Corrigido | KEV | EPSS | Ação |
-|---|---|---|---|---|---|---|---|
+| Prioridade em palavras | O que foi encontrado | O que falta confirmar | Próxima verificação |
+|---|---|---|---|
 
 ## Ordem de correção
 1. {crítico + KEV + exposto}
@@ -269,7 +279,7 @@ N vulnerabilidades, M com exploração ativa | não é possível responder sem i
 - zero-day e falha não publicada
 
 ## Próximo passo
-{uma ação concreta, com dono e prazo}
+{uma ação concreta, objetivo e indicação se é leitura/rede/alteração; dono e prazo só se conhecidos}
 
 > Vulnerabilidade conhecida não é comprometimento. Exploração exige correlação com log e host.
 ```
