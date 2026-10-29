@@ -1,7 +1,7 @@
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications. Triages auth and web logs for brute force, credential stuffing, scanning, path traversal, exploitation attempts and API abuse; investigates possible compromise; runs guided incident response; audits legacy and end-of-life stacks (PHP 5 and other unpatched runtimes) for dangerous patterns and missing patches; inventories project dependencies and correlates them with known vulnerabilities (CVE via OSV/NVD, active exploitation via CISA KEV, priority via EPSS), mapping findings to OWASP Top 10:2025; recommends and verifies hardening for SSH, firewall, fail2ban, TLS, file permissions and secrets. Use when the user asks to analyze logs, investigate suspicious activity, check server security posture, respond to an incident, evaluate an emergency CVE, check whether a project has vulnerabilities, or harden a server. Also triggers on Portuguese requests about segurança, logs, invasão, vulnerabilidade, OWASP, CVE, hardening and vulnerabilidades.
-version: 2.7.0
+version: 2.8.0
 license: MIT
 ---
 
@@ -59,6 +59,7 @@ Abra **apenas** a referência indicada. Não carregue todas de uma vez.
 
 | Pedido | Referência |
 |---|---|
+| Consolidar relatórios JSON existentes em avaliação guiada, sem rodar scanners | `references/guided-assessment.md` + `scripts/assessment_report.py` |
 | Resposta para público não técnico, explicação de risco ou priorização | `references/security-communication.md` |
 | "analisa esse log", "o que aconteceu ontem", "tem ataque aqui?" | `references/detection-playbook.md` + `scripts/log_triage.py` |
 | "postura", "hardening", "score de segurança", "drift", "auditar o servidor" | `references/hardening-linux.md` + `scripts/harden_check.py` |
@@ -108,6 +109,7 @@ Os Lotes 8–10 (avaliação de vulnerabilidades, SBOM/SARIF/comparação e comu
 | `scripts/php_audit.py` | auditoria estática de código PHP: execução, inclusão, SQL, upload, segredos e bloqueios 5→8 | Não |
 | `scripts/harden_check.py` | postura Linux: SSH, firewall, kernel, permissões, TLS, Docker, portas, updates e drift vs. baseline | Não |
 | `scripts/deps_audit.py` | inventário/CVE, SBOM CycloneDX/SPDX, SARIF 2.1.0 e comparação JSON; rede só com `--online` | Não |
+| `scripts/assessment_report.py` | resume relatórios JSON salvos em Markdown ou JSON; não executa análise nem acessa rede | Não |
 | `scripts/f2b_guard.py` | check/ban/unban/sweep em jail existente, com allowlist, TTL, aprovação e auditoria | **Sim** — só com `--execute` e `--approved-by` |
 
 ```bash
@@ -133,6 +135,10 @@ python3 scripts/deps_audit.py /var/www/app --format spdx --output /tmp/sbom.spdx
 python3 scripts/deps_audit.py /var/www/app --online --format sarif --output /tmp/results.sarif
 python3 scripts/deps_audit.py --compare /tmp/antes.json /tmp/depois.json --format md
 python3 scripts/deps_audit.py --list-parsers
+
+# Consolida apenas relatórios JSON existentes; rótulos são opcionais
+python3 scripts/assessment_report.py --input deps=/tmp/deps.json --input php=/tmp/php.json \
+  --input postura=/tmp/postura.json --input logs=/tmp/logs.json --format md --output /tmp/avaliacao.md
 
 python3 scripts/f2b_guard.py check --jail sshd --ip 203.0.113.45
 python3 scripts/f2b_guard.py ban --ip 203.0.113.45 --jail sshd \

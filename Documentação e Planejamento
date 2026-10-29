@@ -4,9 +4,9 @@
 
 | | |
 |---|---|
-| **Versão do plano** | 2.5 (skill 2.7) |
+| **Versão do plano** | 2.6 (skill 2.8) |
 | **Data** | 2026-10-29 |
-| **Status** | Lotes 0–10 concluídos; repositório público sob MIT desde 2026-10-26; Lote 7b pendente (trigger e aceite nos harnesses); portabilidade multi-harness documentada, automação pendente |
+| **Status** | Lotes 0–11 concluídos; repositório público sob MIT desde 2026-10-26; Lote 7b pendente (trigger e aceite nos harnesses); portabilidade multi-harness documentada, automação pendente |
 | **Substitui** | v1 ("Planejamento & Arquitetura: Skill de Cibersegurança para IA / Cyber Guardian") |
 
 **Revisão 2.2 (2026-10-25):** documenta a portabilidade multi-harness — Hermes Agent como primeiro alvo não-OpenCode, instalação manual, contrato de capacidades, runtime subset, riscos de escrita por agente e o roadmap do Lote 8. O README foi reescrito para cobrir instalação e execução em OpenCode, Hermes, Codex, Claude Code, Gemini/Antigravity, Cursor/Cline e agentes genéricos.
@@ -16,6 +16,8 @@
 **Revisão 2.4 (2026-10-29):** conclui SBOM CycloneDX 1.6/SPDX 2.3, saída SARIF 2.1.0 e comparação de relatórios JSON por identidade estável; cobertura e limitações da comparação são explícitas. Skill 2.6.0.
 
 **Revisão 2.5 (2026-10-29):** estabelece linguagem clara como padrão transversal da skill: resumo antes das siglas, separação explícita entre fato e hipótese, próximos passos seguros e detalhes técnicos em seção própria. Novo módulo `security-communication.md`; skill 2.7.0.
+
+**Revisão 2.6 (2026-10-29):** adiciona avaliação guiada que consolida JSONs existentes de dependências, PHP, postura e logs, sem executar scanners nem acessar a rede; inclui deduplicação de advisories, resumo Markdown/JSON e declaração de limites. Skill 2.8.0.
 
 **Nota de estado (2026-10-26):** o repositório passou a ser público sob licença MIT. Este documento é histórico: as seções 15 e 16 contêm referências à fase privada/proprietária e podem mencionar caminhos da máquina do mantenedor. Para instalação e uso atuais, consulte o README.
 
@@ -294,6 +296,7 @@ Regra estrutural: **toda ação passa pela camada 0**. Não existe caminho que v
 | `emergency-cve.md` | Rotina completa de CVE emergencial |
 | `appsec-assessment.md` | Vulnerabilidades do projeto: inventário, CVE, mapa OWASP Top 10:2025, cobertura declarada |
 | `security-communication.md` | Padrão transversal para explicar achados, limites e próximos passos em linguagem clara |
+| `guided-assessment.md` | Fluxo para consolidar relatórios existentes sem reanálise |
 | `vuln-sources.md` | OSV, NVD, KEV, EPSS: endpoints, rate limit, cache, citação e injeção |
 | `incident-response.md` | Runbook + preservação de evidência |
 | `safe-operations.md` | Allowlist, TTL, aprovação, auditoria, rollback, LGPD |
@@ -361,9 +364,10 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 | **8** ✅ | `appsec-assessment.md` + `vuln-sources.md` + `deps_audit.py` + fixtures | 45 testes novos (170 no total); inventário de 15 formatos; correlação OSV/KEV/EPSS offline por fixture; schema 1.1 aditivo; cobertura e "não avaliado" obrigatórios |
 | **9** ✅ | SBOM + SARIF + comparação de avaliações em `deps_audit.py` | CycloneDX 1.6, SPDX 2.3, SARIF 2.1.0; deltas de dependências/CVEs por identidade estável; ressalva para mudança de cobertura |
 | **10** ✅ | `security-communication.md` + `SKILL.md` + templates | Resumo para responsáveis não especialistas; fatos/hipóteses separados; próximo passo seguro e detalhe técnico sem omitir cobertura |
-| **11** ⏳ | Portabilidade multi-harness: `AGENTS.md`, `manifest.json`, `agent-contract.md`, `adapters/`, `install.py`, testes de portabilidade | Instalar em OpenCode, Hermes, Codex, Claude Code e genérico; validar gatilhos em pelo menos três harnesses; nenhuma dependência de nome de ferramenta do OpenCode |
+| **11** ✅ | `assessment_report.py` + `guided-assessment.md` | Consolidar relatórios JSON locais em Markdown/JSON; somente leitura, sem scanners/rede; deduplicação com referências e limites explícitos |
+| **12** ⏳ | Portabilidade multi-harness: `AGENTS.md`, `manifest.json`, `agent-contract.md`, `adapters/`, `install.py`, testes de portabilidade | Instalar em OpenCode, Hermes, Codex, Claude Code e genérico; validar gatilhos em pelo menos três harnesses; nenhuma dependência de nome de ferramenta do OpenCode |
 
-**Racional da ordem:** lotes 1–4, 6, 8–10 são somente leitura e entregam a maior parte do valor com risco zero. O lote 5 é o único que altera o sistema — vem depois de sandbox e testes, nunca antes. O lote 7 é de distribuição e proteção do repositório. O lote 11 é de portabilidade: o núcleo já é Markdown + stdlib, então o trabalho é adaptar instalação, capacidades e testes, não reescrever a skill.
+**Racional da ordem:** lotes 1–4, 6, 8–11 são somente leitura e entregam a maior parte do valor com risco zero. O lote 5 é o único que altera o sistema — vem depois de sandbox e testes, nunca antes. O lote 7 é de distribuição e proteção do repositório. O lote 12 é de portabilidade: o núcleo já é Markdown + stdlib, então o trabalho é adaptar instalação, capacidades e testes, não reescrever a skill.
 
 ---
 
@@ -715,7 +719,7 @@ Alvo recomendado, sem quebrar o OpenCode:
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications.
-version: 2.7.0
+version: 2.8.0
 license: MIT
 metadata:
   hermes:
