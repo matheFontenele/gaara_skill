@@ -8,8 +8,8 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 
 | Item | Estado |
 |---|---|
-| Versão | 2.7 |
-| Testes | 170/170 no host e no sandbox Docker |
+| Versão | 2.8 |
+| Testes | 176/176 no host e no sandbox Docker |
 | Harnesses documentados | OpenCode, Hermes Agent, Codex, Claude Code, Gemini/Antigravity e agentes genéricos |
 | Distribuição | pública; clone via HTTPS ou SSH |
 | Licença | MIT |
@@ -310,9 +310,12 @@ Em uma sessão nova, pergunte diretamente:
 - “Meu servidor está seguro? Faz uma auditoria de postura.”
 - “Tenho PHP 5.6 exposto; o que faço com o PHP2Shell?”
 - “Esse código PHP tem `eval` ou SQL injection? O que quebra no PHP 8?”
+- “Tenho JSONs de dependências, PHP e logs; monta um resumo do que devo investigar primeiro.”
 - “Quero banir `203.0.113.45` no jail `sshd`; me mostra o dry-run.”
 
 A skill escolhe a referência e o script adequados; você não precisa decorar comandos.
+
+Para consolidar relatórios já salvos, a rotina guiada não roda scanners: lê somente os JSONs indicados e gera um resumo Markdown ou JSON. Veja `references/guided-assessment.md`.
 
 No Hermes, o mesmo pedido pode ser feito com `/gaara`:
 
