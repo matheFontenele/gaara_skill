@@ -1,6 +1,6 @@
 <!-- gaara-module
 id: detection-playbook
-version: 1.1
+version: 1.2
 requires: [finding-schema, severity-matrix]
 scripts: [log_triage]
 -->
@@ -450,6 +450,25 @@ grep -Ei "signal 11|SIGSEGV|AH00051" /var/log/apache2/error.log* /var/log/php*-f
 ```
 
 Os scripts `log_triage.py` e `ir_triage.sh` automatizam isto com redação e agregação.
+
+### Oferta de relatório Markdown após a triagem
+
+Depois de apresentar os resultados da análise, pergunte se a pessoa quer salvar **um resumo Markdown redigido**. Exemplo: “Quer que eu salve este resumo da triagem em um arquivo `.md` na pasta privada padrão da Gaara?”
+
+- **Não grave antes da resposta nem interprete silêncio como autorização.** Se a resposta for não, encerre sem criar arquivo.
+- Após confirmação explícita, gere o documento a partir dos achados agregados e revisados; não copie logs brutos, tokens, senhas, cookies, cabeçalhos de autenticação, e-mails ou payloads integrais. Minimize IPs/identificadores quando não forem necessários para a finalidade.
+- Pasta padrão: `${XDG_STATE_HOME:-$HOME/.local/state}/gaara/reports`, sempre fora da pasta analisada. O gravador cria a pasta com modo `0700`, cada relatório com `0600` e nome UTC único, sem sobrescrever arquivos existentes.
+- Para salvar o Markdown já revisado após o consentimento, passe o conteúdo pela entrada padrão:
+
+  ```bash
+  python3 scripts/save_log_report.py --confirmed <<'GAARA_REPORT'
+  # Triagem de segurança — {host} — {data UTC}
+
+  {resumo redigido, achados agregados, evidências mínimas, limitações e próximo passo}
+  GAARA_REPORT
+  ```
+
+- Informe o caminho retornado. Se a gravação falhar, explique o erro e não tente outra pasta sem perguntar. A opção `--output` de `log_triage.py` continua sendo uma saída direta da ferramenta; não a use para persistir o relatório oferecido sem consentimento e revisão.
 
 ---
 
