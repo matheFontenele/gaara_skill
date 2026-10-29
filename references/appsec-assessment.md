@@ -102,6 +102,8 @@ Ordem de decisão, não de execução:
 
 **Detalhe da integração OSV:** `POST /v1/querybatch` retorna somente `id` e `modified` para cada advisory; para obter aliases, severidade, faixa afetada e versões corrigidas, `deps_audit.py` também consulta `GET /v1/vulns/{id}` e guarda a resposta no cache local. Se esse segundo passo falhar, os detalhes devem aparecer como **não avaliados**, nunca ser tratados como se viessem completos da resposta em lote. A consulta envia nomes de pacotes e versões, não arquivos `.env` ou conteúdo do projeto.
 
+Ao recomendar uma versão corrigida, compare a versão instalada com os limites da **mesma faixa de lançamento** no registro OSV. Um advisory pode listar correções em vários ramos (por exemplo, `1.x`, `3.x` e `5.x`); não recomende uma correção de um ramo diferente, pois isso pode sugerir downgrade ou incompatibilidade. Se o comparador não entender o esquema da versão, deixe o destino sem especificar e peça conferência humana na fonte do fornecedor.
+
 ### 4.4 Avaliar código e configuração
 
 ```bash

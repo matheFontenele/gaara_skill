@@ -242,6 +242,29 @@ class CvssTests(unittest.TestCase):
         self.assertIsNone(da.cvss_v3_base_score("CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N"))
         self.assertIsNone(da.cvss_v3_base_score(""))
 
+
+class OsvFixedVersionTests(unittest.TestCase):
+    def test_selects_fixed_release_from_installed_major_branch(self) -> None:
+        affected = {
+            "package": {"name": "phpoffice/phpspreadsheet"},
+            "ranges": [
+                {"type": "ECOSYSTEM", "events": [{"introduced": "4.0.0"}, {"fixed": "5.6.0"}]},
+                {"type": "ECOSYSTEM", "events": [{"introduced": "3.3.0"}, {"fixed": "3.10.4"}]},
+                {"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "1.30.3"}]},
+            ],
+        }
+        self.assertEqual(da.extract_fixed(affected, "5.1.0"), "5.6.0")
+        self.assertEqual(da.extract_fixed(affected, "3.8.0"), "3.10.4")
+        self.assertEqual(da.extract_fixed(affected, "1.29.0"), "1.30.3")
+
+    def test_refuses_ambiguous_versions_and_unaffected_branches(self) -> None:
+        affected = {"ranges": [
+            {"type": "ECOSYSTEM", "events": [{"introduced": "4.0.0"}, {"fixed": "5.6.0"}]},
+            {"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "1.30.3"}]},
+        ]}
+        self.assertIsNone(da.extract_fixed(affected, "5.1.0-beta"))
+        self.assertIsNone(da.extract_fixed(affected, "6.0.0"))
+
     def test_thresholds(self) -> None:
         self.assertEqual(da.cvss_to_severity(9.0), "critico")
         self.assertEqual(da.cvss_to_severity(8.9), "alto")

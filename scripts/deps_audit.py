@@ -1147,14 +1147,64 @@ def _same_package(ours: str, theirs: str) -> bool:
     return a == b or a.endswith(":" + b) or a.endswith("/" + b)
 
 
-def extract_fixed(affected: dict[str, Any]) -> str | None:
-    fixed: list[str] = []
+def _release_tuple(value: Any) -> tuple[int, ...] | None:
+    """Parse only plain numeric releases; ambiguous versions are not guessed."""
+    text = str(value or "").strip()
+    if text[:1].lower() == "v":
+        text = text[1:]
+    if not re.fullmatch(r"\d+(?:\.\d+)*", text):
+        return None
+    try:
+        return tuple(int(part) for part in text.split("."))
+    except ValueError:  # pragma: no cover - guarded by the regex
+        return None
+
+
+def _release_cmp(left: tuple[int, ...], right: tuple[int, ...]) -> int:
+    width = max(len(left), len(right))
+    a = left + (0,) * (width - len(left))
+    b = right + (0,) * (width - len(right))
+    return (a > b) - (a < b)
+
+
+def extract_fixed(affected: dict[str, Any], installed_version: str | None = None) -> str | None:
+    """Return a fix only from the affected range containing the installed version.
+
+    OSV records can contain several maintained release lines for one package.
+    Choosing the lexically greatest or last `fixed` event can suggest a
+    downgrade (for example 1.30.3 for an installed 5.x release). If a version
+    cannot be compared safely, leave the fix unspecified for human review.
+    """
+    installed = _release_tuple(installed_version) if installed_version else None
+    if installed is None:
+        return None
+
+    fixes: list[tuple[tuple[int, ...], str]] = []
     for item in affected.get("ranges") or []:
+        if item.get("type") not in {"ECOSYSTEM", "SEMVER"}:
+            continue
+        introduced: tuple[int, ...] | None = (0,)
         for event in item.get("events") or []:
-            value = event.get("fixed")
-            if value:
-                fixed.append(str(value))
-    return max(fixed) if fixed else None
+            if event.get("introduced") is not None:
+                introduced = _release_tuple(event.get("introduced"))
+                continue
+            fixed_value = event.get("fixed")
+            if fixed_value is not None:
+                fixed_tuple = _release_tuple(fixed_value)
+                if (introduced is not None and fixed_tuple is not None
+                        and _release_cmp(installed, introduced) >= 0
+                        and _release_cmp(installed, fixed_tuple) < 0):
+                    fixes.append((fixed_tuple, str(fixed_value)))
+                introduced = None
+                continue
+            if event.get("last_affected") is not None:
+                # The version is known affected, but this range gives no fixed release.
+                introduced = None
+
+    if not fixes:
+        return None
+    fixes.sort(key=lambda entry: entry[0])
+    return fixes[0][1]
 
 
 def parse_osv_vuln(vuln: dict[str, Any], package: Package) -> Hit:
@@ -1187,7 +1237,7 @@ def parse_osv_vuln(vuln: dict[str, Any], package: Package) -> Hit:
         name = str(affected.get("package", {}).get("name", ""))
         if not _same_package(package.name, name):
             continue
-        fixed = extract_fixed(affected) or fixed
+        fixed = extract_fixed(affected, package.version) or fixed
 
     references = [str(r.get("url")) for r in vuln.get("references") or []
                   if isinstance(r, dict) and r.get("url")]
@@ -1340,7 +1390,9 @@ def hit_finding(hit: Hit, *, internet_exposed: bool, epss_threshold: float,
             "OSV casa pacote+versão; se o lockfile não reflete o deploy, "
             "a versão em produção pode divergir."
         ),
-        "not_observed": [] if fixed else ["a fonte não publicou versão corrigida"],
+        "not_observed": [] if fixed else [
+            "não foi possível determinar uma versão corrigida compatível com a versão instalada; confirme a faixa no aviso oficial"
+        ],
     }
 
 
