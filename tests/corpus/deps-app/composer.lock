@@ -1,0 +1,15 @@
+{
+  "_comment": "Fixture sintética para tests/test_deps_audit.py. Versões reais, advisories simulados.",
+  "packages": [
+    {
+      "name": "monolog/monolog",
+      "version": "v2.9.1"
+    }
+  ],
+  "packages-dev": [
+    {
+      "name": "phpunit/phpunit",
+      "version": "9.6.0"
+    }
+  ]
+}

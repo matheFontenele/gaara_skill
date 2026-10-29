@@ -164,6 +164,46 @@ Sem `locator`, a evidência não é verificável — e um achado não verificáv
 | `counts` | Deve somar exatamente o total de `findings` |
 | `correlations[]` | Cada `findings[]` interno deve existir |
 | `not_observed` | Lista de ausências relevantes |
+| `coverage` | Opcional (schema 1.1). Cobertura declarada — ver §3.4.1 |
+
+#### 3.4.1 `summary.coverage` (opcional, schema 1.1)
+
+Auditoria de dependências precisa declarar o que conseguiu olhar. Sem isso, "nenhum achado" é indistinguível de "nada foi lido".
+
+```json
+"coverage": {
+  "manifests_found": 5,
+  "manifests_parsed": 4,
+  "manifests_failed": 1,
+  "dependencies": 118,
+  "dependencies_unpinned": 2,
+  "docker_images": 1,
+  "queried": 116,
+  "with_advisory": 4,
+  "skipped_ecosystems": ["rpm"],
+  "sources": [
+    { "name": "OSV.dev", "url": "https://api.osv.dev/v1/querybatch",
+      "retrieved_at": "2026-10-29T14:02:00Z", "stale": false,
+      "cached": false, "error": null }
+  ],
+  "not_evaluated": ["OWASP A01 e A06", "código fora de PHP"]
+}
+```
+
+Regras:
+
+- `manifests_parsed + manifests_failed == manifests_found`.
+- `sources[]` lista **toda** fonte tentada, inclusive a que falhou (`error` preenchido). Fonte indisponível não desaparece do relatório.
+- `stale: true` significa cache vencido; o achado que depende dele não pode ser apresentado como atual.
+- `not_evaluated[]` é obrigatório quando a cobertura é parcial, e é o que permite responder "não encontrei" sem mentir.
+
+#### 3.4.2 Versões aceitas
+
+`schema_version` `1.0` e `1.1` são válidas. `1.1` é **aditiva**: aceita o prefixo `supply-chain/` em `category`, `coverage` em `summary` e `retrieved_at` em qualquer evidência de API. Um resultado `1.0` continua válido e não precisa ser migrado.
+
+#### 3.4.3 Veredito em auditoria de dependência
+
+`incidente` significa comprometimento observado. Vulnerabilidade conhecida **não** é comprometimento: `deps_audit.py` nunca declara `incidente`, no máximo `atencao`. Quem sustenta `incidente` é a rotina de log/IR.
 
 ---
 
@@ -175,7 +215,8 @@ Prefixo indica a natureza do achado:
 |---|---|---|
 | `detection/` | atividade observada em log | `ssh-brute-force`, `credential-stuffing`, `scan-enumeration`, `path-traversal`, `rce-runtime`, `sql-injection`, `upload-webshell`, `cryptomining`, `exfiltration-c2`, `api-abuse`, `prompt-injection` |
 | `posture/` | configuração do host | `ssh-config`, `firewall`, `permissions`, `tls`, `secrets`, `docker`, `updates` |
-| `cve/` | vulnerabilidade conhecida | `cve-2026-109618`, `exposure`, `patch-state` |
+| `cve/` | vulnerabilidade conhecida com CVE | `cve-2026-109618` (ID em minúsculas), `exposure`, `patch-state` |
+| `supply-chain/` | dependência, inventário e cadeia de suprimentos | `known-vulnerability`, `inventory-gap`, `unpinned-dependency`, `docker-base-image`, `os-package` |
 | `legacy/` | stack EOL | `eol-runtime`, `unsupported-dependency`, `migration-blocker` |
 | `code/` | fraqueza estática no código | `rce`, `injection`, `upload` |
 | `ir/` | resposta a incidente | `persistence`, `lateral-movement`, `evidence-integrity` |
@@ -217,6 +258,8 @@ Um resultado só é aceito se **todas** forem verdadeiras:
 - [ ] `counts` bate com `findings`
 - [ ] `correlations[].findings` referencia IDs existentes
 - [ ] `source_type = advisory` tem `url` e `retrieved_at`
+- [ ] Evidência de `source_type = api` tem `url` e `retrieved_at`
+- [ ] `coverage.manifests_parsed + coverage.manifests_failed == coverage.manifests_found`
 - [ ] Nenhum número de CVE citado sem estar na evidência
 - [ ] Ação que altera sistema tem `requires_approval: true` e `rollback`
 
@@ -255,7 +298,8 @@ O código `3` permite usar a skill em CI ou cron com alerta.
 - Nunca escrever fora de `--output` (scripts de leitura).
 - Stdlib quando possível; dependência extra só se justificada.
 - Timeout em qualquer chamada externa.
-- Determinismo: mesma entrada → mesmo JSON (ordenação estável).
+- Script com rede é **offline por padrão**: só consulta com `--online`, e `--offline` usa apenas cache.
+- Determinismo: mesma entrada → mesmo JSON (ordenação estável). Com `--online`, o determinismo vale por snapshot de cache; `retrieved_at` registra a diferença.
 
 ---
 

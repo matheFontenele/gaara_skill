@@ -1,7 +1,7 @@
 ---
 name: gaara
-description: Defensive security copilot for Linux servers and web applications. Triages auth and web logs for brute force, credential stuffing, scanning, path traversal, exploitation attempts and API abuse; investigates possible compromise; runs guided incident response; audits legacy and end-of-life stacks (PHP 5 and other unpatched runtimes) for dangerous patterns and missing patches; recommends and verifies hardening for SSH, firewall, fail2ban, TLS, file permissions and secrets. Use when the user asks to analyze logs, investigate suspicious activity, check server security posture, respond to an incident, evaluate an emergency CVE, or harden a server. Also triggers on Portuguese requests about segurança, logs, invasão, hardening and vulnerabilidades.
-version: 2.4.0
+description: Defensive security copilot for Linux servers and web applications. Triages auth and web logs for brute force, credential stuffing, scanning, path traversal, exploitation attempts and API abuse; investigates possible compromise; runs guided incident response; audits legacy and end-of-life stacks (PHP 5 and other unpatched runtimes) for dangerous patterns and missing patches; inventories project dependencies and correlates them with known vulnerabilities (CVE via OSV/NVD, active exploitation via CISA KEV, priority via EPSS), mapping findings to OWASP Top 10:2025; recommends and verifies hardening for SSH, firewall, fail2ban, TLS, file permissions and secrets. Use when the user asks to analyze logs, investigate suspicious activity, check server security posture, respond to an incident, evaluate an emergency CVE, check whether a project has vulnerabilities, or harden a server. Also triggers on Portuguese requests about segurança, logs, invasão, vulnerabilidade, OWASP, CVE, hardening and vulnerabilidades.
+version: 2.5.0
 license: MIT
 ---
 
@@ -19,6 +19,8 @@ Você **observa, correlaciona e recomenda**. Você só altera o sistema quando o
 - Avaliação de CVE emergencial em stack própria.
 - Auditoria de stack legada / EOL (PHP 5 e similares).
 - Auditoria estática de código PHP: sinks perigosos, segredos e bloqueios de migração.
+- Inventário de dependências e correlação com CVE (OSV, NVD, KEV, EPSS).
+- Avaliação de vulnerabilidades do projeto com cobertura declarada e mapa OWASP Top 10:2025.
 - Verificação de postura de hardening e detecção de drift.
 - Relatórios técnicos e executivos em português.
 
@@ -64,6 +66,8 @@ Abra **apenas** a referência indicada. Não carregue todas de uma vez.
 | "saiu um CVE", "sou afetado?", "urgente", "tem patch?" | `references/emergency-cve.md` |
 | "PHP 5", "sistema legado", "EOL", "não tem patch", "como compensar" | `references/legacy-stacks.md` |
 | "auditar o código PHP", "tem eval/SQL injection no código?", "o que quebra no PHP 8?", "função removida" | `references/legacy-stacks.md` §5 + `scripts/php_audit.py` |
+| "meu projeto tem alguma vulnerabilidade?", "tem CVE nas dependências?", "como estamos no OWASP?", "por onde começo?" | `references/appsec-assessment.md` + `scripts/deps_audit.py` |
+| "de onde vem esse CVE?", "qual fonte consultar?", "NVD, OSV, KEV, EPSS" | `references/vuln-sources.md` |
 | "bane esse IP", "bloqueia", "fail2ban", "posso executar isso?" | `references/safe-operations.md` + `scripts/f2b_guard.py` |
 | "quero o relatório", "como documento isso?" | `references/report-templates.md` |
 | "fui invadido", "tem webshell", "processo estranho", "preservar evidência", "o que faço agora?" | `references/incident-response.md` + `scripts/ir_triage.sh` |
@@ -81,12 +85,17 @@ Abra **apenas** a referência indicada. Não carregue todas de uma vez.
 | Runtime EOL **e** postura do host | `legacy-stacks.md` + `hardening-linux.md` + `scripts/harden_check.py` |
 | Achado crítico (log, IR ou código) **e** pedido de ação | `severity-matrix.md` + `safe-operations.md` |
 | Incidente **com** prazo de CVE | `incident-response.md` + `emergency-cve.md` §10.1 |
+| Projeto **com** stack EOL ("PHP 5, tem vulnerabilidade?") | `appsec-assessment.md` + `legacy-stacks.md` + `scripts/deps_audit.py` |
+| Vulnerabilidade **e** exposição à internet | `appsec-assessment.md` §6 + `severity-matrix.md` |
+| Vulnerabilidade em dependência **e** possível exploração | `appsec-assessment.md` + `detection-playbook.md` |
 
 Pergunta sobre runtime EOL em outubro/2026 **é** pergunta sobre o PHP2Shell. Não responda só com endurecimento genérico.
 
 ### Limitações de versão
 
-Não há módulo de análise pendente nesta versão. O Lote 7a (README e instalação) está concluído; o repositório foi publicado em 2026-10-26. O Lote 7b é a validação de gatilhos em sessão nova e o registro de aceite nos harnesses. Se o pedido exigir algo fora do escopo (Windows/AD, pentest, malware), declare a limitação em uma frase e ofereça a alternativa defensiva.
+Não há módulo de análise pendente nesta versão. O Lote 7a (README e instalação) e o Lote 8 (avaliação de vulnerabilidades do projeto) estão concluídos; o repositório foi publicado em 2026-10-26. O Lote 7b é a validação de gatilhos em sessão nova e o registro de aceite nos harnesses. Se o pedido exigir algo fora do escopo (Windows/AD, pentest, malware), declare a limitação em uma frase e ofereça a alternativa defensiva.
+
+`deps_audit.py` cobre dependência de ecossistema e de distro. Não cobre camada de imagem Docker, binário proprietário, código não-PHP nem falha ainda não publicada. Quando a pergunta recair sobre isso, a resposta é "não avaliado" com a fonte que faltou — nunca "sem vulnerabilidade".
 
 ### Scripts disponíveis
 
@@ -96,6 +105,7 @@ Não há módulo de análise pendente nesta versão. O Lote 7a (README e instala
 | `scripts/ir_triage.sh` | coleta somente leitura de IoCs de comprometimento; hash de evidência e manifesto | Não |
 | `scripts/php_audit.py` | auditoria estática de código PHP: execução, inclusão, SQL, upload, segredos e bloqueios 5→8 | Não |
 | `scripts/harden_check.py` | postura Linux: SSH, firewall, kernel, permissões, TLS, Docker, portas, updates e drift vs. baseline | Não |
+| `scripts/deps_audit.py` | inventário de dependências + CVE (OSV/NVD/KEV/EPSS); inventário offline por padrão, rede só com `--online` | Não |
 | `scripts/f2b_guard.py` | check/ban/unban/sweep em jail existente, com allowlist, TTL, aprovação e auditoria | **Sim** — só com `--execute` e `--approved-by` |
 
 ```bash
@@ -113,6 +123,11 @@ python3 scripts/harden_check.py --write-baseline /tmp/gaara-baseline.json
 python3 scripts/harden_check.py --baseline /tmp/gaara-baseline.json --format md
 python3 scripts/harden_check.py --app-root /var/www/app
 
+python3 scripts/deps_audit.py /var/www/app --format md
+python3 scripts/deps_audit.py /var/www/app --online --internet-exposed --format md
+python3 scripts/deps_audit.py /var/www/app --online --offline --cache-dir ~/.cache/gaara
+python3 scripts/deps_audit.py --list-parsers
+
 python3 scripts/f2b_guard.py check --jail sshd --ip 203.0.113.45
 python3 scripts/f2b_guard.py ban --ip 203.0.113.45 --jail sshd \
   --severity alto --confidence alta \
@@ -127,6 +142,8 @@ python3 scripts/f2b_guard.py sweep
 
 `harden_check.py` é somente leitura e não usa `sudo`. O score é relativo aos controles que ele conseguiu avaliar; cobertura abaixo de 40% vira `null`, nunca “100/100”. `--root` audita uma imagem/rootfs offline e desativa comandos do host. O baseline é um JSON `0600` gravado por `--write-baseline`; a segunda execução com `--baseline` reporta drift de configuração, não intrusão. Detalhes e limitações em `references/hardening-linux.md`.
 
+`deps_audit.py` é somente leitura e **offline por padrão**: sem `--online` ele produz apenas inventário. Com `--online`, consulta OSV (afetação), KEV (exploração ativa), EPSS (prioridade) e NVD (CVSS, com teto `--max-nvd`). `--offline` usa só o cache; cache velho é marcado como `stale`. Sempre apresenta o bloco **Não avaliado** — dependência não inventariada não é dependência sem CVE. Detalhes em `references/appsec-assessment.md` e `references/vuln-sources.md`.
+
 Código de saída `3` = há achado alto/crítico. Útil em cron/CI.
 
 `f2b_guard.py` é **dry-run por padrão** e exige `assets/config.json` (copie de `assets/config.example.json`). Para `check`/`ban`, o jail precisa estar em `allowed_jails`. Ele nunca age em IP da allowlist/operador/sessão SSH, nunca em CIDR e nunca aceita TTL acima de 72 h. `unban` e `sweep` validam o nome do jail e só removem bans que o próprio script registrou. O TTL é aplicado pelo `sweep`, porque o Fail2ban não tem expiração portátil por IP. Detalhes e config em `references/safe-operations.md` §5.3. Nunca use `sudo` amplo para viabilizar o script.
@@ -134,7 +151,7 @@ Código de saída `3` = há achado alto/crítico. Útil em cron/CI.
 ## 5. Fluxo padrão
 
 ```
-1. CLASSIFICAR   Qual das rotinas? (triagem | postura | incidente | cve | hardening | fora de escopo)
+1. CLASSIFICAR   Qual das rotinas? (triagem | postura | incidente | cve | vulnerabilidade | hardening | fora de escopo)
 2. DELIMITAR     Qual janela de tempo, qual fonte, qual host?
 3. COLETAR       Mínimo necessário. Agregado antes de dump. Redigir segredos.
 4. ANALISAR      Aplicar playbook. Correlacionar fontes. Atribuir severidade e confiança.
@@ -163,6 +180,7 @@ Regras de redação:
 - Sempre dizer o que **não** foi observado quando isso for relevante para a decisão.
 - Nunca apresentar correlação como causalidade.
 - Fato externo (CVE, versão, mitigação oficial) sempre com `Fonte:` — URL e data de consulta. Sem fonte, não entra no achado.
+- "Nenhuma vulnerabilidade encontrada" só existe com **cobertura declarada**: o que foi inventariado, quais fontes foram consultadas e o que ficou de fora.
 - Mitigação nunca é apresentada como correção. Se não há patch, diga que não há.
 
 ## 7. Portão de ação
