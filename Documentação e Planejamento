@@ -4,14 +4,16 @@
 
 | | |
 |---|---|
-| **Versão do plano** | 2.3 (skill 2.5) |
+| **Versão do plano** | 2.4 (skill 2.6) |
 | **Data** | 2026-10-29 |
-| **Status** | Lotes 0–8 concluídos; repositório público sob MIT desde 2026-10-26; Lote 7b pendente (trigger e aceite nos harnesses); portabilidade multi-harness documentada, automação pendente |
+| **Status** | Lotes 0–9 concluídos; repositório público sob MIT desde 2026-10-26; Lote 7b pendente (trigger e aceite nos harnesses); portabilidade multi-harness documentada, automação pendente |
 | **Substitui** | v1 ("Planejamento & Arquitetura: Skill de Cibersegurança para IA / Cyber Guardian") |
 
 **Revisão 2.2 (2026-10-25):** documenta a portabilidade multi-harness — Hermes Agent como primeiro alvo não-OpenCode, instalação manual, contrato de capacidades, runtime subset, riscos de escrita por agente e o roadmap do Lote 8. O README foi reescrito para cobrir instalação e execução em OpenCode, Hermes, Codex, Claude Code, Gemini/Antigravity, Cursor/Cline e agentes genéricos.
 
 **Revisão 2.3 (2026-10-29):** conclui o Lote 8 (avaliação de vulnerabilidades do projeto) e renumera a portabilidade multi-harness para Lote 9. O novo módulo adiciona `appsec-assessment.md`, `vuln-sources.md` e `deps_audit.py`, com inventário de 15 formatos de lockfile, correlação OSV/NVD/KEV/EPSS, mapa OWASP Top 10:2025 e cobertura declarada no schema 1.1.
+
+**Revisão 2.4 (2026-10-29):** conclui SBOM CycloneDX 1.6/SPDX 2.3, saída SARIF 2.1.0 e comparação de relatórios JSON por identidade estável; cobertura e limitações da comparação são explícitas. Skill 2.6.0.
 
 **Nota de estado (2026-10-26):** o repositório passou a ser público sob licença MIT. Este documento é histórico: as seções 15 e 16 contêm referências à fase privada/proprietária e podem mencionar caminhos da máquina do mantenedor. Para instalação e uso atuais, consulte o README.
 
@@ -353,10 +355,11 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 | **6** ✅ | `harden_check.py` + `hardening-linux.md` + `baseline.example.json` + testes | 31 testes novos (125 no total); score em host real; segunda execução detecta drift de `.env` em teste controlado |
 | **7a** ✅ | `README.md` + instalação + `.gitignore` + `.dockerignore` + `LICENSE` + repositório público | Commit inicial com 56 arquivos; repositório público no GitHub; 125/125 testes no host e em Docker; clone limpo sem `.env`; nenhum segredo real versionado |
 | **7b** ⏳ | Trigger em sessão nova + registro de aceite nos harnesses | Licença MIT decidida em 2026-10-26; falta validar o gatilho de hardening/README em sessão nova e registrar os aceites |
-| **8** ✅ | `appsec-assessment.md` + `vuln-sources.md` + `deps_audit.py` + fixtures | 38 testes novos (163 no total); inventário de 15 formatos; correlação OSV/KEV/EPSS offline por fixture; schema 1.1 aditivo; cobertura e "não avaliado" obrigatórios |
-| **9** ⏳ | Portabilidade multi-harness: `AGENTS.md`, `manifest.json`, `agent-contract.md`, `adapters/`, `install.py`, testes de portabilidade | Instalar em OpenCode, Hermes, Codex, Claude Code e genérico; validar gatilhos em pelo menos três harnesses; nenhuma dependência de nome de ferramenta do OpenCode |
+| **8** ✅ | `appsec-assessment.md` + `vuln-sources.md` + `deps_audit.py` + fixtures | 45 testes novos (170 no total); inventário de 15 formatos; correlação OSV/KEV/EPSS offline por fixture; schema 1.1 aditivo; cobertura e "não avaliado" obrigatórios |
+| **9** ✅ | SBOM + SARIF + comparação de avaliações em `deps_audit.py` | CycloneDX 1.6, SPDX 2.3, SARIF 2.1.0; deltas de dependências/CVEs por identidade estável; ressalva para mudança de cobertura |
+| **10** ⏳ | Portabilidade multi-harness: `AGENTS.md`, `manifest.json`, `agent-contract.md`, `adapters/`, `install.py`, testes de portabilidade | Instalar em OpenCode, Hermes, Codex, Claude Code e genérico; validar gatilhos em pelo menos três harnesses; nenhuma dependência de nome de ferramenta do OpenCode |
 
-**Racional da ordem:** lotes 1–4, 6 e 8 são somente leitura e entregam a maior parte do valor com risco zero. O lote 5 é o único que altera o sistema — vem depois de sandbox e testes, nunca antes. O lote 7 é de distribuição e proteção do repositório. O lote 9 é de portabilidade: o núcleo já é Markdown + stdlib, então o trabalho é adaptar instalação, capacidades e testes, não reescrever a skill.
+**Racional da ordem:** lotes 1–4, 6, 8 e 9 são somente leitura e entregam a maior parte do valor com risco zero. O lote 5 é o único que altera o sistema — vem depois de sandbox e testes, nunca antes. O lote 7 é de distribuição e proteção do repositório. O lote 10 é de portabilidade: o núcleo já é Markdown + stdlib, então o trabalho é adaptar instalação, capacidades e testes, não reescrever a skill.
 
 ---
 
@@ -708,7 +711,7 @@ Alvo recomendado, sem quebrar o OpenCode:
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications.
-version: 2.5.0
+version: 2.6.0
 license: MIT
 metadata:
   hermes:

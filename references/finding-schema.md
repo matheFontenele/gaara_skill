@@ -178,6 +178,11 @@ Auditoria de dependências precisa declarar o que conseguiu olhar. Sem isso, "ne
   "dependencies": 118,
   "dependencies_unpinned": 2,
   "docker_images": 1,
+  "inventory": [
+    { "type": "library", "ecosystem": "npm", "name": "lodash",
+      "version": "4.17.20", "scope": "runtime", "pinned": true,
+      "sources": ["package-lock.json"] }
+  ],
   "queried": 116,
   "with_advisory": 4,
   "skipped_ecosystems": ["rpm"],
@@ -196,6 +201,7 @@ Regras:
 - `sources[]` lista **toda** fonte tentada, inclusive a que falhou (`error` preenchido). Fonte indisponível não desaparece do relatório.
 - `stale: true` significa cache vencido; o achado que depende dele não pode ser apresentado como atual.
 - `not_evaluated[]` é obrigatório quando a cobertura é parcial, e é o que permite responder "não encontrei" sem mentir.
+- `inventory[]` (aditivo em 1.1) guarda somente identidade/versão/escopo/origem observados; habilita SBOM e comparação. Hashes, licenças e arestas não observados não devem ser inferidos.
 
 #### 3.4.2 Versões aceitas
 

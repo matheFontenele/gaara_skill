@@ -403,6 +403,8 @@ class EndToEndTests(unittest.TestCase):
         _, result = self._run([])
         coverage = result["summary"]["coverage"]
         self.assertGreater(coverage["dependencies"], 5)
+        self.assertLessEqual(len(coverage["inventory"]), coverage["dependencies"] +
+                             coverage["docker_images"])
         self.assertEqual(coverage["manifests_failed"], 0)
         self.assertIn("OSV", " ".join(s["name"] for s in coverage["sources"]))
         self.assertTrue(any("A01" in item for item in coverage["not_evaluated"]))
@@ -460,6 +462,102 @@ class EndToEndTests(unittest.TestCase):
         result["summary"]["coverage"]["manifests_failed"] += 1
         errors = da.validate(result)
         self.assertTrue(any("coverage" in item for item in errors), errors)
+
+    def test_sbom_cyclonedx_and_spdx_are_deterministic(self) -> None:
+        _, report = self._run([])
+        cdx = da.make_sbom(report, "cyclonedx")
+        self.assertEqual(cdx["bomFormat"], "CycloneDX")
+        self.assertEqual(cdx["specVersion"], "1.6")
+        self.assertEqual(cdx, da.make_sbom(report, "cyclonedx"))
+        self.assertTrue(any(c.get("purl", "").startswith("pkg:npm/lodash@")
+                            for c in cdx["components"]))
+        spdx = da.make_sbom(report, "spdx")
+        self.assertEqual(spdx["spdxVersion"], "SPDX-2.3")
+        self.assertEqual(len(spdx["packages"]), len(report["summary"]["coverage"]["inventory"]))
+        self.assertTrue(all(p["downloadLocation"] == "NOASSERTION" for p in spdx["packages"]))
+
+    def test_dev_scope_is_excluded_in_cyclonedx(self) -> None:
+        code, output, error = run_main([str(CORPUS), "--include-dev", "--format", "json"])
+        self.assertEqual(code, 0, error)
+        report = json.loads(output)
+        sbom = da.make_sbom(report, "cyclonedx")
+        jsdom = next(c for c in sbom["components"] if c["name"] == "jsdom")
+        self.assertEqual(jsdom["scope"], "excluded")
+
+    def test_sarif_has_stable_rules_and_results(self) -> None:
+        _, report = self._run([])
+        sarif = da.sarif_report(report)
+        self.assertEqual(sarif["version"], "2.1.0")
+        run = sarif["runs"][0]
+        self.assertTrue(run["tool"]["driver"]["rules"])
+        self.assertEqual(len(run["results"]), len(report["findings"]))
+        critical = next(r for r in run["results"]
+                        if r["properties"]["gaara:severity"] == "critico")
+        self.assertEqual(critical["level"], "error")
+
+    def test_report_comparison_uses_component_and_finding_identity(self) -> None:
+        _, before = self._run([])
+        after = json.loads(json.dumps(before))
+        after["scan"]["id"] = "later"
+        inventory = after["summary"]["coverage"]["inventory"]
+        removed_component = next(c for c in inventory if c["name"] == "requests")
+        inventory.remove(removed_component)
+        inventory.append({"type": "library", "ecosystem": "npm", "name": "new-package",
+                          "version": "1.2.3", "scope": "runtime", "pinned": True,
+                          "sources": ["package-lock.json"]})
+        lodash = next(c for c in inventory if c["name"] == "lodash")
+        lodash["version"] = "4.17.21"
+        old_vuln = next(f for f in before["findings"]
+                        if f["category"] == "cve/cve-2018-18074")
+        after["findings"].remove(old_vuln)
+        delta = da.compare_reports(before, after)
+        self.assertEqual([c["name"] for c in delta["components"]["added"]], ["new-package"])
+        self.assertEqual([c["name"] for c in delta["components"]["removed"]], ["requests"])
+        self.assertEqual(len(delta["components"]["updated"]), 1)
+        self.assertEqual(delta["components"]["updated"][0]["before"]["name"], "lodash")
+        self.assertEqual(len(delta["vulnerabilities"]["resolved"]), 1)
+        self.assertEqual(delta["vulnerabilities"]["persistent"], 2)
+        self.assertIn("lodash: 4.17.20 → 4.17.21",
+                      da.render_comparison_markdown(delta))
+
+    def test_comparison_ignores_source_timestamp_for_coverage(self) -> None:
+        _, before = self._run([])
+        after = json.loads(json.dumps(before))
+        for source in after["summary"]["coverage"]["sources"]:
+            if source.get("retrieved_at"):
+                source["retrieved_at"] = "2099-01-01T00:00:00Z"
+        delta = da.compare_reports(before, after)
+        self.assertFalse(delta["coverage_changed"])
+
+    def test_cli_emits_sarif_and_sbom_json(self) -> None:
+        for fmt in ("sarif", "cyclonedx", "spdx"):
+            with self.subTest(fmt=fmt):
+                code, output, error = run_main([str(CORPUS), "--format", fmt])
+                self.assertEqual(code, 0, error)
+                parsed = json.loads(output)
+                if fmt == "sarif":
+                    self.assertEqual(parsed["version"], "2.1.0")
+                elif fmt == "cyclonedx":
+                    self.assertEqual(parsed["bomFormat"], "CycloneDX")
+                else:
+                    self.assertEqual(parsed["spdxVersion"], "SPDX-2.3")
+
+    def test_cli_compares_saved_json_reports(self) -> None:
+        report = self._run([])[1]
+        with tempfile.TemporaryDirectory() as temp:
+            before = Path(temp) / "before.json"
+            after = Path(temp) / "after.json"
+            before.write_text(json.dumps(report), encoding="utf-8")
+            after.write_text(json.dumps(report), encoding="utf-8")
+            code, output, error = run_main(["--compare", str(before), str(after)])
+            self.assertEqual(code, 0, error)
+            delta = json.loads(output)
+            self.assertEqual(delta["components"]["added"], [])
+            self.assertEqual(delta["components"]["removed"], [])
+            code, markdown, error = run_main(["--compare", str(before), str(after),
+                                              "--format", "md"])
+            self.assertEqual(code, 0, error)
+            self.assertIn("## Vulnerabilidades", markdown)
 
     def test_broken_manifest_blocks_clean_verdict(self) -> None:
         code, out, _ = run_main([str(BROKEN), "--format", "json"])
