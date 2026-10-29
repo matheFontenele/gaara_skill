@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Versão do plano** | 2.8 (skill 2.10) |
+| **Versão do plano** | 2.9 (skill 2.11) |
 | **Data** | 2026-10-29 |
 | **Status** | Lotes 0–11 concluídos; repositório público sob MIT desde 2026-10-26; Lote 7b pendente (trigger e aceite nos harnesses); portabilidade multi-harness documentada, automação pendente |
 | **Substitui** | v1 ("Planejamento & Arquitetura: Skill de Cibersegurança para IA / Cyber Guardian") |
@@ -22,6 +22,8 @@
 **Revisão 2.7 (2026-10-29):** corrige a consulta OSV: `/querybatch` devolve identificadores e datas, então agora os detalhes completos dos advisories são hidratados por ID e armazenados em cache; falhas nessa etapa ficam declaradas como não avaliadas. O relatório guiado distingue contagem de advisories e CVEs. Skill 2.9.0.
 
 **Revisão 2.8 (2026-10-29):** corrige recomendações de versão para usar a faixa do release instalado, evitando sugerir uma versão corrigida pertencente a outro ramo principal; comparação ambígua deixa o destino pendente de conferência. Skill 2.10.0.
+
+**Revisão 2.9 (2026-10-29):** após triagem de logs, Gaara oferece salvar resumo Markdown redigido apenas com consentimento explícito. Adiciona gravador privado fora do projeto, permissões restritas e criação sem sobrescrita. Skill 2.11.0.
 
 **Nota de estado (2026-10-26):** o repositório passou a ser público sob licença MIT. Este documento é histórico: as seções 15 e 16 contêm referências à fase privada/proprietária e podem mencionar caminhos da máquina do mantenedor. Para instalação e uso atuais, consulte o README.
 
@@ -723,7 +725,7 @@ Alvo recomendado, sem quebrar o OpenCode:
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications.
-version: 2.10.0
+version: 2.11.0
 license: MIT
 metadata:
   hermes:
