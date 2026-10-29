@@ -74,6 +74,7 @@ MAX_NVD_DEFAULT = 20
 EPSS_THRESHOLD_DEFAULT = 0.1
 
 OSV_BATCH_URL = "https://api.osv.dev/v1/querybatch"
+OSV_VULN_URL = "https://api.osv.dev/v1/vulns/"
 NVD_CVE_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 KEV_URL = ("https://www.cisa.gov/sites/default/files/feeds/"
            "known_exploited_vulnerabilities.json")
@@ -959,6 +960,11 @@ def osv_cache_url(payload: dict[str, Any]) -> str:
     return f"{OSV_BATCH_URL}#{digest}"
 
 
+def osv_vuln_url(vuln_id: str) -> str:
+    """Endpoint OSV que retorna o registro completo de um advisory."""
+    return OSV_VULN_URL + urllib.parse.quote(vuln_id, safe="")
+
+
 def epss_cache_url(cve_ids: Sequence[str]) -> str:
     return f"{EPSS_URL}?cve={','.join(urllib.parse.quote(c) for c in cve_ids)}"
 
@@ -968,7 +974,7 @@ def nvd_cache_url(cve_id: str) -> str:
 
 
 def osv_query(packages: list[Package], *, cache_dir: Path, offline: bool,
-              refresh: bool) -> tuple[list[dict[str, Any]], SourceMeta, list[Package]]:
+              refresh: bool) -> tuple[list[dict[str, Any]], SourceMeta, list[Package], list[str]]:
     queries, index = osv_payload(packages)
 
     bodies: list[dict[str, Any]] = []
@@ -984,7 +990,52 @@ def osv_query(packages: list[Package], *, cache_dir: Path, offline: bool,
         meta.retrieved_at = body.get("_gaara_retrieved_at", meta.retrieved_at)
         if body.get("_gaara_stale"):
             meta.stale = True
-    return bodies, meta, index
+
+    # /querybatch intentionally returns only {id, modified}. Fetch full OSV
+    # records so severity, aliases, affected ranges, and fixed versions are not
+    # silently lost. IDs are deduplicated across package results and cached by
+    # the existing HTTP cache.
+    details_by_id: dict[str, dict[str, Any]] = {}
+    detail_errors: list[str] = []
+    for result in bodies:
+        for vuln in result.get("vulns") or []:
+            if not isinstance(vuln, dict) or isinstance(vuln.get("affected"), list):
+                continue
+            vuln_id = str(vuln.get("id") or "")
+            if not vuln_id:
+                detail_errors.append("um advisory retornado pela OSV veio sem identificador")
+                continue
+            if vuln_id in details_by_id:
+                continue
+            try:
+                detail, detail_meta = http_json(
+                    osv_vuln_url(vuln_id), cache_dir=cache_dir / "osv",
+                    ttl=TTL_OSV, offline=offline, refresh=refresh,
+                )
+                if not isinstance(detail, dict) or not isinstance(detail.get("affected"), list):
+                    raise SourceError(f"registro OSV incompleto para {vuln_id}")
+                details_by_id[vuln_id] = detail
+                if detail_meta.retrieved_at:
+                    meta.retrieved_at = detail_meta.retrieved_at
+                meta.stale = meta.stale or detail_meta.stale
+            except SourceError as exc:
+                detail_errors.append(
+                    f"detalhes do advisory OSV {vuln_id} indisponíveis; "
+                    f"severidade/faixa corrigida não avaliadas ({exc})"
+                )
+
+    hydrated: list[dict[str, Any]] = []
+    for result in bodies:
+        enriched = dict(result)
+        enriched_vulns: list[dict[str, Any]] = []
+        for vuln in result.get("vulns") or []:
+            if not isinstance(vuln, dict):
+                continue
+            vuln_id = str(vuln.get("id") or "")
+            enriched_vulns.append(details_by_id.get(vuln_id, vuln))
+        enriched["vulns"] = enriched_vulns
+        hydrated.append(enriched)
+    return hydrated, meta, index, detail_errors
 
 
 def _post_json(url: str, payload: dict[str, Any], *, cache_url: str,
@@ -2119,11 +2170,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.online and inventory.packages:
         cache_dir = Path(args.cache_dir or os.path.expanduser("~/.cache/gaara"))
         try:
-            osv_results, osv_meta, index = osv_query(
+            osv_results, osv_meta, index, detail_errors = osv_query(
                 inventory.packages, cache_dir=cache_dir,
                 offline=args.offline, refresh=args.refresh,
             )
             sources.append(osv_meta)
+            not_evaluated.extend(detail_errors)
         except SourceError as exc:
             osv_results, index = [], []
             sources.append(SourceMeta(name="OSV.dev", url=OSV_BATCH_URL, error=str(exc)))

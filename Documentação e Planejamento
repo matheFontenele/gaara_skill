@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Versão do plano** | 2.6 (skill 2.8) |
+| **Versão do plano** | 2.7 (skill 2.9) |
 | **Data** | 2026-10-29 |
 | **Status** | Lotes 0–11 concluídos; repositório público sob MIT desde 2026-10-26; Lote 7b pendente (trigger e aceite nos harnesses); portabilidade multi-harness documentada, automação pendente |
 | **Substitui** | v1 ("Planejamento & Arquitetura: Skill de Cibersegurança para IA / Cyber Guardian") |
@@ -18,6 +18,8 @@
 **Revisão 2.5 (2026-10-29):** estabelece linguagem clara como padrão transversal da skill: resumo antes das siglas, separação explícita entre fato e hipótese, próximos passos seguros e detalhes técnicos em seção própria. Novo módulo `security-communication.md`; skill 2.7.0.
 
 **Revisão 2.6 (2026-10-29):** adiciona avaliação guiada que consolida JSONs existentes de dependências, PHP, postura e logs, sem executar scanners nem acessar a rede; inclui deduplicação de advisories, resumo Markdown/JSON e declaração de limites. Skill 2.8.0.
+
+**Revisão 2.7 (2026-10-29):** corrige a consulta OSV: `/querybatch` devolve identificadores e datas, então agora os detalhes completos dos advisories são hidratados por ID e armazenados em cache; falhas nessa etapa ficam declaradas como não avaliadas. O relatório guiado distingue contagem de advisories e CVEs. Skill 2.9.0.
 
 **Nota de estado (2026-10-26):** o repositório passou a ser público sob licença MIT. Este documento é histórico: as seções 15 e 16 contêm referências à fase privada/proprietária e podem mencionar caminhos da máquina do mantenedor. Para instalação e uso atuais, consulte o README.
 
@@ -719,7 +721,7 @@ Alvo recomendado, sem quebrar o OpenCode:
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications.
-version: 2.8.0
+version: 2.9.0
 license: MIT
 metadata:
   hermes:
