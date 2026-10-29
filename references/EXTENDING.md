@@ -207,6 +207,7 @@ Não crie módulo. Adicione **rótulo** ao controle que já existe:
 | NIST 800-53 | rótulos nos controles de hardening |
 | ISO 27001 | rótulos nos controles + seção de evidência |
 | OWASP ASVS | revisão de aplicação |
+| OWASP Top 10:2025 | rótulos `frameworks` em `appsec-assessment.md` (A01–A10) |
 | OWASP LLM Top 10 | `legacy-stacks.md` / app com IA |
 | MITRE ATT&CK | campo `mitre` de cada achado |
 | LGPD | `safe-operations.md` §8 |

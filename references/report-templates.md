@@ -231,3 +231,45 @@ scripts: []
 | Conta | | | | |
 
 Ao exportar IoCs, **remova dados pessoais desnecessários** e informe a finalidade.
+
+---
+
+## 6. Relatório de vulnerabilidades do projeto
+
+```markdown
+# Vulnerabilidades conhecidas — {projeto} — {data}
+
+## Veredito
+{uma das três frases: nenhuma vulnerabilidade conhecida nas fontes consultadas |
+N vulnerabilidades, M com exploração ativa | não é possível responder sem inventário}
+
+## Cobertura
+| Item | Valor |
+|---|---|
+| Dependências identificadas | {n} |
+| Sem versão resolvida | {n} |
+| Manifests lidos / encontrados | {n} / {n} |
+| Fontes consultadas | OSV {data} · KEV {data} · EPSS {data} · NVD {data} |
+| Código avaliado | PHP: {n} arquivos · outros: não avaliado |
+| Host avaliado | não nesta execução |
+
+## Achados prioritários
+| Sev. | ID | Pacote | Instalado | Corrigido | KEV | EPSS | Ação |
+|---|---|---|---|---|---|---|---|
+
+## Ordem de correção
+1. {crítico + KEV + exposto}
+2. {crítico/alto com patch}
+3. {médio com EPSS alto}
+
+## Não avaliado
+- OWASP A01 (controle de acesso) e A06 (design)
+- código fora de PHP
+- camadas de imagem Docker
+- zero-day e falha não publicada
+
+## Próximo passo
+{uma ação concreta, com dono e prazo}
+
+> Vulnerabilidade conhecida não é comprometimento. Exploração exige correlação com log e host.
+```

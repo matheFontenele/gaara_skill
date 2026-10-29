@@ -48,6 +48,28 @@ Severidade é sempre **um valor único**. Quando o risco depende de uma condiç�
 
 Não escreva "ALTO se…" no campo de severidade. Isso quebra o schema e impede comparação entre achados.
 
+### 1.4 Camada de vulnerabilidade externa (CVSS → KEV → EPSS)
+
+Para CVE e dependência, a severidade não é só CVSS. A ordem de cálculo é fixa:
+
+| Etapa | Efeito |
+|---|---|
+| Base | CVSS: ≥9,0 crítico · 7,0–8,9 alto · 4,0–6,9 médio · <4,0 baixo |
+| Sem CVSS | `médio` com confiança `baixa` e motivo declarado (nunca `baixo` por otimismo) |
+| **KEV** (exploração ativa confirmada) | **+1 nível** |
+| **EPSS ≥ 0,1 e exposto à internet** | **+1 nível** |
+| Teto | `crítico` |
+
+Regras:
+
+- Escalada **só sobe**. Nunca desça por EPSS baixo ou ausência de KEV; esses sinais mudam **prioridade**, não gravidade.
+- Cada salto é registrado em `observations.severity_rationale` com o motivo e o valor que o disparou.
+- EPSS não mede impacto: EPSS 0,9 com CVSS 3,0 continua sendo impacto baixo para o seu ativo.
+- KEV diz "explorado em campo", não "explorado contra você". Quem responde isso é o log.
+- Sem CVSS e sem rótulo de fonte, a classificação conservadora é `médio`, e a resposta diz que falta dado.
+
+Ver `vuln-sources.md` para validade de cada número e `appsec-assessment.md` §6 para a prioridade operacional.
+
 ---
 
 ## 2. Confiança

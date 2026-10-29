@@ -8,8 +8,8 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 
 | Item | Estado |
 |---|---|
-| Versão | 2.4 |
-| Testes | 125/125 no host e no sandbox Docker |
+| Versão | 2.5 |
+| Testes | 163/163 no host e no sandbox Docker |
 | Harnesses documentados | OpenCode, Hermes Agent, Codex, Claude Code, Gemini/Antigravity e agentes genéricos |
 | Distribuição | pública; clone via HTTPS ou SSH |
 | Licença | MIT |
@@ -27,10 +27,13 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 | CVE emergencial | “saiu um CVE”, “sou afetado?”, “tem patch?” | Avaliação da stack, mitigação e prazo |
 | Stack EOL | “PHP 5.6”, “sistema legado”, “não tem patch” | Contenção + migração, sem prometer patch inexistente |
 | Código PHP | “tem eval/SQL injection no código?”, “o que quebra no PHP 8?” | Auditoria estática e bloqueios de migração |
+| Vulnerabilidades do projeto | “meu projeto tem alguma vulnerabilidade?”, “tem CVE nas dependências?”, “como estamos no OWASP?” | Inventário, CVE priorizado por KEV/EPSS e cobertura declarada |
 | Ação Fail2ban | “bane esse IP”, “posso executar?” | Dry-run; ban/unban só com aprovação explícita |
 | Relatório | “como documento isso?” | Relatório técnico ou executivo em português |
 
 **Fora de escopo:** pentest, exploit, scan em terceiros, bypass de controle, engenharia reversa de malware e resposta a incidente em Windows/Active Directory.
+
+A rotina de vulnerabilidades do projeto responde sempre em três blocos: **veredito**, **cobertura** e **não avaliado**. "Nenhum CVE encontrado" nunca vira "está seguro" — vira "nenhuma vulnerabilidade conhecida nestas fontes, com esta cobertura".
 
 ---
 
@@ -38,8 +41,9 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 
 - Um harness que consuma `SKILL.md` — OpenCode, Hermes Agent, Codex, Claude Code ou Gemini/Antigravity — **ou** um agente genérico com leitura de arquivos e, opcionalmente, execução de comandos.
 - Git, para clonar e atualizar o repositório.
-- Acesso à internet para clonar o repositório; depois do clone, as análises funcionam offline.
-- Python **3.10+** (recomendado 3.12+); todos os scripts de análise usam apenas a biblioteca padrão.
+- Acesso à internet para clonar o repositório. Depois do clone, triagem de log, postura, código e inventário de dependências funcionam offline; a correlação de CVE (`deps_audit.py --online`) consulta OSV/KEV/EPSS/NVD e pode usar cache para operar sem rede.
+- Python **3.10+** (recomendado 3.12+); todos os scripts de análise usam apenas a biblioteca padrão. `poetry.lock` e `Cargo.lock` exigem 3.11+ (`tomllib`).
+- Opcional: `NVD_API_KEY` para enriquecer CVSS em lote sem esbarrar no rate limit do NIST.
 - Bash, para `scripts/ir_triage.sh`.
 - Opcional: Fail2ban, Docker, `sshd`, `ufw`, `nft`, `iptables` e `ss`, conforme o que você quer auditar.
 - Nenhuma dependência de `pip`, nenhum `sudo` obrigatório para os scripts de análise.
@@ -138,32 +142,35 @@ readlink -f $config_home/opencode/skills/gaara
 
 #### Permissão de skills
 
-No OpenCode, o symlink sozinho não garante que a skill seja carregada. A permissão `skill` precisa permitir a Gaara. Verifique `~/.config/opencode/opencode.json`; se houver:
+No OpenCode, o symlink sozinho não garante que a skill seja carregada. A permissão `skill` precisa permitir a Gaara. **No OpenCode V2** as permissões são um array em `~/.config/opencode/opencode.json`:
 
 ```json
-"permission": {
-  "skill": "deny"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permissions": [
+    { "action": "skill", "resource": "*", "effect": "allow" }
+  ]
 }
 ```
 
-a skill fica **oculta do modelo** e não é chamada. Para manter outras skills bloqueadas e liberar apenas a Gaara:
+Para manter outras skills bloqueadas e liberar apenas a Gaara:
 
 ```json
-"permission": {
-  "skill": {
-    "*": "deny",
-    "gaara": "allow"
-  }
-}
+"permissions": [
+  { "action": "skill", "resource": "*", "effect": "deny" },
+  { "action": "skill", "resource": "gaara", "effect": "allow" }
+]
 ```
 
-Alternativas: `"skill": "allow"` libera todas; `"skill": "ask"` pede aprovação antes de carregar. A ordem importa: a última regra que casa vence, então deixe `"*"` primeiro e `"gaara"` depois.
+Alternativas: `"effect": "allow"` libera todas; `"effect": "ask"` pede aprovação antes de carregar. **A ordem importa:** a última regra que casa vence, então deixe `"*"` primeiro e `gaara` depois.
 
-Depois de alterar o `opencode.json`, **reinicie o processo do OpenCode**. Abrir apenas uma sessão nova recarrega a descoberta da skill, mas não necessariamente o arquivo de configuração; a permissão é lida na inicialização. Para validar:
+Depois de alterar o `opencode.json`, a configuração é recarregada ao salvar. Se a skill não aparecer, use `/reload` e abra uma sessão nova. Para validar:
 
 ```bash
-python3 -c 'import json, os; print(json.load(open(os.path.expanduser("~/.config/opencode/opencode.json")))["permission"])'
+python3 -c 'import json, os; print(json.load(open(os.path.expanduser("~/.config/opencode/opencode.json"))).get("permissions"))'
 ```
+
+> **OpenCode V1:** a sintaxe antiga era `"permission": { "skill": "deny" }` — e a forma com `"*"`/`"gaara"` dentro de `"skill"`. Se o seu `opencode.json` ainda usa esse formato, ele continua aceito, mas não misture os dois: use `permissions` no V2.
 
 O caminho do exemplo é o padrão; se você usa `XDG_CONFIG_HOME`, ajuste o caminho.
 
@@ -586,6 +593,8 @@ Referências principais:
 - `references/hardening-linux.md` — postura, score e drift;
 - `references/legacy-stacks.md` — PHP 5/EOL;
 - `references/emergency-cve.md` — CVE emergencial;
+- `references/appsec-assessment.md` — vulnerabilidades do projeto e mapa OWASP Top 10:2025;
+- `references/vuln-sources.md` — OSV, NVD, KEV, EPSS: endpoints, cache e citação;
 - `references/incident-response.md` — resposta a incidente;
 - `references/EXTENDING.md` — como adicionar módulo.
 
@@ -595,8 +604,8 @@ Referências principais:
 
 | Sintoma | Causa provável | O que fazer |
 |---|---|---|
-| Skill não carrega no OpenCode | symlink quebrado, `SKILL.md` fora da raiz ou `permission.skill` em `deny` | `readlink -f`; confira `SKILL.md`; ajuste `permission.skill` (seção 3.3); reinicie a sessão |
-| OpenCode não mostra a skill | sessão iniciada antes da instalação ou permissão `deny` | confira `permission.skill`; reinicie o OpenCode; abra sessão nova |
+| Skill não carrega no OpenCode | symlink quebrado, `SKILL.md` fora da raiz ou `permissions` em `deny` | `readlink -f`; confira `SKILL.md`; ajuste `permissions` (seção 3.3); `/reload` |
+| OpenCode não mostra a skill | sessão iniciada antes da instalação ou permissão `deny` | confira `permissions[].action: "skill"`; `/reload`; abra sessão nova |
 | Skill é carregada, mas não usada | trigger não reconhecido ou sessão antiga | peça explicitamente “use a skill gaara” e confira o transcript |
 | Comando do README falha no fish | sintaxe POSIX (`${VAR:-default}`, `export`) | use os equivalentes fish da seção 3.3 ou execute com `bash` |
 | Orca/Codex não carrega | skill instalada apenas no OpenCode; o Orca pode indexar a skill, mas o agente do pane precisa dela no harness dele | instale no harness do pane (`~/.codex/skills/gaara`, `~/.claude/skills/gaara` etc.) ou use um pane OpenCode |
@@ -610,6 +619,10 @@ Referências principais:
 | Score baixo/estranho | cobertura parcial | veja `Cobertura` e `Não observado`; não compare hosts diferentes |
 | Drift inesperado | baseline de outro host ou mudança real | confira `baseline_host`, `score_delta` e o item alterado |
 | Fail2ban recusa ban | IP em allowlist, CIDR, jail inválido ou falta aprovação | veja a mensagem; o script falha fechado |
+| `deps_audit.py` acha tudo limpo | não havia manifest, ou `--online` não foi usado | confira `cobertura` no relatório: `queried: 0` significa que nada foi consultado |
+| `deps_audit.py` não vê um pacote | manifest não reconhecido ou dependência sem versão resolvida | `--list-parsers`; instale o lockfile (`composer install`, `npm install`, `pip-compile`) |
+| `deps_audit.py` falha com 429 | rate limit do NVD | use `NVD_API_KEY`, `--nvd off` ou `--offline` com cache |
+| Relatório de dependência diz "não avaliado" | fonte indisponível, imagem Docker ou código não-PHP | é o comportamento correto; veja `coverage.sources[].error` |
 | Baseline recusado | JSON inválido, versão errada ou symlink | regenere com `--write-baseline` em arquivo regular |
 | Agente sem shell não executa | harness sem terminal | receba o comando e execute manualmente; não aceite saída simulada |
 

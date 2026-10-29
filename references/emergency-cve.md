@@ -41,6 +41,8 @@ Esta rotina vive de fatos que **não estão no seu host**: número de CVE, vers�
 
 Se a informação não está em 1–3, ela não é fato ainda.
 
+Endpoints, rate limit, cache e regras de citação estão em `vuln-sources.md`. Não improvise URL nem parâmetro de API: este módulo decide **o que fazer**, aquele diz **onde buscar**.
+
 ### Regras
 
 - **Nunca cite número de CVE que você não leu.** Se não tem certeza, diga: "não tenho fonte para esse CVE".
@@ -88,6 +90,10 @@ php -i 2>/dev/null | grep -i "Server API"
 dpkg -l 2>/dev/null | grep -iE "php|libapache2-mod-php" \
   || rpm -qa 2>/dev/null | grep -i php
 
+# Projeto: dependências declaradas e travadas
+python3 scripts/deps_audit.py /var/www/app --format md
+python3 scripts/deps_audit.py /var/www/app --online --offline   # só cache, se a rede estiver restrita
+
 # Containers
 docker ps --format '{{.Names}}\t{{.Image}}' 2>/dev/null
 docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null
@@ -100,6 +106,8 @@ docker exec <container> php -v
 ```
 
 **Não esqueça:** ambientes de homologação, cron, workers de fila, APIs internas, appliances com PHP embutido (painéis, NAS, câmeras), e o notebook do dev que roda o mesmo stack.
+
+`deps_audit.py` só enxerga o que está no lockfile. Se o deploy não usa o lockfile, compare com o que roda: `composer show` / `npm ls --depth=0` no host, ou a versão dentro do container.
 
 ### 4.1 Planilha de inventário
 
@@ -332,7 +340,7 @@ Em container, rode **dentro** do container que atende — não no host.
 
 ## 11. Checklist final
 
-- [ ] Inventário levantado (hosts, containers, homologação)
+- [ ] Inventário levantado (hosts, containers, homologação, dependências do projeto)
 - [ ] Versões confirmadas no processo **em execução**, não só no disco
 - [ ] Exposição classificada
 - [ ] Correção oficial verificada

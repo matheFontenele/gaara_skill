@@ -4,12 +4,14 @@
 
 | | |
 |---|---|
-| **Versão do plano** | 2.2 (skill 2.4) |
-| **Data** | 2026-10-25 |
-| **Status** | Lotes 0–7a concluídos; repositório público sob MIT desde 2026-10-26; Lote 7b pendente (trigger e aceite nos harnesses); portabilidade multi-harness documentada, automação pendente |
+| **Versão do plano** | 2.3 (skill 2.5) |
+| **Data** | 2026-10-29 |
+| **Status** | Lotes 0–8 concluídos; repositório público sob MIT desde 2026-10-26; Lote 7b pendente (trigger e aceite nos harnesses); portabilidade multi-harness documentada, automação pendente |
 | **Substitui** | v1 ("Planejamento & Arquitetura: Skill de Cibersegurança para IA / Cyber Guardian") |
 
 **Revisão 2.2 (2026-10-25):** documenta a portabilidade multi-harness — Hermes Agent como primeiro alvo não-OpenCode, instalação manual, contrato de capacidades, runtime subset, riscos de escrita por agente e o roadmap do Lote 8. O README foi reescrito para cobrir instalação e execução em OpenCode, Hermes, Codex, Claude Code, Gemini/Antigravity, Cursor/Cline e agentes genéricos.
+
+**Revisão 2.3 (2026-10-29):** conclui o Lote 8 (avaliação de vulnerabilidades do projeto) e renumera a portabilidade multi-harness para Lote 9. O novo módulo adiciona `appsec-assessment.md`, `vuln-sources.md` e `deps_audit.py`, com inventário de 15 formatos de lockfile, correlação OSV/NVD/KEV/EPSS, mapa OWASP Top 10:2025 e cobertura declarada no schema 1.1.
 
 **Nota de estado (2026-10-26):** o repositório passou a ser público sob licença MIT. Este documento é histórico: as seções 15 e 16 contêm referências à fase privada/proprietária e podem mencionar caminhos da máquina do mantenedor. Para instalação e uso atuais, consulte o README.
 
@@ -286,6 +288,8 @@ Regra estrutural: **toda ação passa pela camada 0**. Não existe caminho que v
 | `hardening-linux.md` | sshd, ufw, sysctl, permissões, TLS, Docker, secrets, updates |
 | `legacy-stacks.md` | PHP 5 / runtime EOL: por que não tem conserto, compensar, isolar, migrar |
 | `emergency-cve.md` | Rotina completa de CVE emergencial |
+| `appsec-assessment.md` | Vulnerabilidades do projeto: inventário, CVE, mapa OWASP Top 10:2025, cobertura declarada |
+| `vuln-sources.md` | OSV, NVD, KEV, EPSS: endpoints, rate limit, cache, citação e injeção |
 | `incident-response.md` | Runbook + preservação de evidência |
 | `safe-operations.md` | Allowlist, TTL, aprovação, auditoria, rollback, LGPD |
 | `report-templates.md` | Digest, incidente, hardening, executivo |
@@ -298,6 +302,7 @@ Regra estrutural: **toda ação passa pela camada 0**. Não existe caminho que v
 | `ir_triage.sh` | read-only | Sinais de comprometimento, com hash das evidências |
 | `harden_check.py` | read-only | Postura + score + drift vs. baseline |
 | `php_audit.py` | read-only | Padrões perigosos e incompatibilidades 5→8 |
+| `deps_audit.py` | read-only | Inventário multi-lockfile + CVE via OSV/NVD/KEV/EPSS; offline por padrão |
 | `f2b_guard.py` | **ação** | Check/ban/unban/sweep com allowlist, TTL, aprovação e auditoria |
 
 Todos com `--help`, saída em Markdown, códigos de saída semânticos e dependência apenas da stdlib (exceto onde indicado). `f2b_guard.py` usa somente a stdlib e um config JSON — sem PyYAML.
@@ -348,9 +353,10 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 | **6** ✅ | `harden_check.py` + `hardening-linux.md` + `baseline.example.json` + testes | 31 testes novos (125 no total); score em host real; segunda execução detecta drift de `.env` em teste controlado |
 | **7a** ✅ | `README.md` + instalação + `.gitignore` + `.dockerignore` + `LICENSE` + repositório público | Commit inicial com 56 arquivos; repositório público no GitHub; 125/125 testes no host e em Docker; clone limpo sem `.env`; nenhum segredo real versionado |
 | **7b** ⏳ | Trigger em sessão nova + registro de aceite nos harnesses | Licença MIT decidida em 2026-10-26; falta validar o gatilho de hardening/README em sessão nova e registrar os aceites |
-| **8** ⏳ | Portabilidade multi-harness: `AGENTS.md`, `manifest.json`, `agent-contract.md`, `adapters/`, `install.py`, testes de portabilidade | Instalar em OpenCode, Hermes, Codex, Claude Code e genérico; validar gatilhos em pelo menos três harnesses; nenhuma dependência de nome de ferramenta do OpenCode |
+| **8** ✅ | `appsec-assessment.md` + `vuln-sources.md` + `deps_audit.py` + fixtures | 38 testes novos (163 no total); inventário de 15 formatos; correlação OSV/KEV/EPSS offline por fixture; schema 1.1 aditivo; cobertura e "não avaliado" obrigatórios |
+| **9** ⏳ | Portabilidade multi-harness: `AGENTS.md`, `manifest.json`, `agent-contract.md`, `adapters/`, `install.py`, testes de portabilidade | Instalar em OpenCode, Hermes, Codex, Claude Code e genérico; validar gatilhos em pelo menos três harnesses; nenhuma dependência de nome de ferramenta do OpenCode |
 
-**Racional da ordem:** lotes 1–4 e 6 são somente leitura e entregam a maior parte do valor com risco zero. O lote 5 é o único que altera o sistema — vem depois de sandbox e testes, nunca antes. O lote 7 é de distribuição e proteção do repositório. O lote 8 é de portabilidade: o núcleo já é Markdown + stdlib, então o trabalho é adaptar instalação, capacidades e testes, não reescrever a skill.
+**Racional da ordem:** lotes 1–4, 6 e 8 são somente leitura e entregam a maior parte do valor com risco zero. O lote 5 é o único que altera o sistema — vem depois de sandbox e testes, nunca antes. O lote 7 é de distribuição e proteção do repositório. O lote 9 é de portabilidade: o núcleo já é Markdown + stdlib, então o trabalho é adaptar instalação, capacidades e testes, não reescrever a skill.
 
 ---
 
@@ -468,6 +474,15 @@ Scripts de ação (`f2b_guard.py`) não emitem achado: emitem **relatório de a�
 | 2026-10-25 | Hermes com `skills.write_approval: true` | O agente pode editar skills; com symlink para o repo, isso atingiria a fonte de verdade. O gate protege a escrita, mas não substitui a aprovação de ação no sistema |
 | 2026-10-25 | Repositório privado instalado localmente, não por URL | `hermes skills install` depende de acesso ao GitHub; symlink/cópia local funciona sem expor o código |
 | 2026-10-25 | `AGENTS.md` como adaptador genérico planejado | Codex, Cursor, Cline e agentes genéricos leem `AGENTS.md`; o `SKILL.md` continua sendo o conteúdo canônico |
+| 2026-10-29 | Vulnerabilidade do projeto é módulo, não skill irmã | Antes do Lote 8 a skill estava em 12 referências e 11 linhas de roteador; o gatilho de divisão do `EXTENDING.md` é ~15/20. Dividir agora fragmentaria severidade |
+| 2026-10-29 | OWASP Top 10 como rótulo (`frameworks`), não módulo | Regra do `EXTENDING.md`: framework não vira módulo. As 10 categorias viram tabela de cobertura dentro de `appsec-assessment.md` |
+| 2026-10-29 | OSV decide afetação; NVD enriquece | NVD não mapeia pacote de linguagem e não tem consulta em lote por ID; OSV tem faixa corrigida por ecossistema |
+| 2026-10-29 | KEV e EPSS só escalam, nunca rebaixam | Gravidade técnica (CVSS) não cai porque a exploração é improvável; isso muda prioridade, não impacto |
+| 2026-10-29 | `deps_audit.py` é offline por padrão | Determinismo e uso em CI/air-gapped; rede só com `--online`, cache local e `retrieved_at` |
+| 2026-10-29 | `deps_audit.py` nunca emite veredito `incidente` | Vulnerabilidade conhecida não é comprometimento; quem sustenta `incidente` é log/IR |
+| 2026-10-29 | NVD com teto (`--max-nvd`) e chave por env | Rate limit sem chave inviabiliza lote; chave nunca entra em arquivo ou relatório |
+| 2026-10-29 | Fonte canônica é `owasp.org`, não `translate.goog` | Tradução automática inverte termos técnicos e é superfície de injeção |
+| 2026-10-29 | Parser incompleto vira `inventory-gap`, não silêncio | Em 15 formatos, parser que falha sem declarar produz falso negativo — o pior resultado |
 
 ---
 
@@ -679,7 +694,7 @@ Em outra máquina, `/caminho/para/gaara_skill` não existe. O procedimento é cl
 | Shell/terminal | Não | Se ausente, entrega comando e marca “não executado” |
 | Root | Não | Se ausente, controles privilegiados viram `unknown` |
 | Escrita no sistema | Só com aprovação | `--execute` + `--approved-by`; nunca automático |
-| Rede | Não | Análise offline; CVE exige fonte fornecida/consultada pelo harness |
+| Rede | Opcional | Só `deps_audit.py --online`; sem rede, inventário e cache local |
 | Subagentes | Não | Modo single-agent |
 | Escrita em skill | Não | Se o harness permitir, usar approval gate ou cópia read-only |
 
@@ -693,7 +708,7 @@ Alvo recomendado, sem quebrar o OpenCode:
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications.
-version: 2.4.0
+version: 2.5.0
 license: MIT
 metadata:
   hermes:
