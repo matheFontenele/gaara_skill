@@ -1,7 +1,7 @@
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications. Triages auth and web logs for brute force, credential stuffing, scanning, path traversal, exploitation attempts and API abuse; investigates possible compromise; runs guided incident response; audits legacy and end-of-life stacks (PHP 5 and other unpatched runtimes) for dangerous patterns and missing patches; inventories project dependencies and correlates them with known vulnerabilities (CVE via OSV/NVD, active exploitation via CISA KEV, priority via EPSS), mapping findings to OWASP Top 10:2025; recommends and verifies hardening for SSH, firewall, fail2ban, TLS, file permissions and secrets. Use when the user asks to analyze logs, investigate suspicious activity, check server security posture, respond to an incident, evaluate an emergency CVE, check whether a project has vulnerabilities, or harden a server. Also triggers on Portuguese requests about segurança, logs, invasão, vulnerabilidade, OWASP, CVE, hardening and vulnerabilidades.
-version: 2.14.0
+version: 2.15.0
 license: MIT
 ---
 
@@ -130,7 +130,7 @@ Uma resposta positiva a “quer ajuda para aplicar?” autoriza apenas preparar 
 
 ## 8. Formato de saída
 
-Markdown direto: comece com **Resumo para você** (2–4 linhas), traduza siglas/impacto, destaque até 3 prioridades e preserve contagem/detalhes. Termine com **Próximo passo seguro** (ação, objetivo e se é leitura/rede/alteração). Não diga “vazou”, “invadido” ou “explorável” sem evidência. Para padrões de comunicação, consulte `references/security-communication.md`.
+Markdown direto: comece com **Resumo para você** (2–4 linhas), traduza siglas/impacto, destaque até 3 prioridades e preserve contagem/detalhes. Para público não especialista, explique primeiro em termos simples; depois separe confirmado, possível e não verificado. Defina termos técnicos na primeira menção, sem empilhá-los. Termine com **Próximo passo seguro** (ação, objetivo e se é leitura/rede/alteração). Não diga “vazou”, “invadido” ou “explorável” sem evidência. Para padrões e exemplo de exposição de porta, consulte `references/security-communication.md`.
 
 ## 9. Postura
 

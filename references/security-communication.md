@@ -1,6 +1,6 @@
 <!-- gaara-module
 id: security-communication
-version: 1.0
+version: 1.1
 requires: [finding-schema, severity-matrix]
 scripts: []
 -->
@@ -47,8 +47,16 @@ Para achados múltiplos, mostre primeiro até três prioridades; diga quantos it
 | SAST / análise estática | busca por padrões suspeitos no código sem executar a aplicação |
 | IoC | sinal que pode ajudar a procurar atividade suspeita, não prova isolada de invasão |
 | “Vulnerável” | versão/faixa relacionada a uma falha; a exposição prática ainda depende do uso, configuração e ambiente |
+| Porta de rede | canal numerado usado por um serviço para receber conexões; a porta não identifica sozinha qual aplicativo está por trás |
+| “Escuta em `0.0.0.0`” | o serviço aceita conexões por todas as interfaces de rede do host, não apenas pela própria máquina; isso não prova que a internet consiga alcançá-lo |
+| Regra pública no firewall | o firewall consultado permite conexões daquela origem/porta; pode haver outra barreira de rede antes do host |
+| Servidor de desenvolvimento | serviço usado para construir/testar uma aplicação; não deve ser considerado pronto para exposição pública sem validação |
+| Vite / Node.js | Vite é uma ferramenta comum de desenvolvimento web; Node.js é o programa que pode executá-la. Porta 5173 sugere Vite, mas não confirma a identidade do serviço |
+| Túnel SSH | conexão criptografada que encaminha uma porta local até um servidor; pode dar acesso privado sem abrir o serviço para toda a internet |
 
 Evite siglas em títulos. Se a sigla for necessária, escreva o significado na primeira menção.
+
+**Não empilhe jargão.** Dê primeiro a consequência em linguagem comum; deixe termos como bind, interface, proxy, HMR, source map e socket para uma seção técnica, e só inclua os que ajudam a decidir. Não liste capacidades hipotéticas de uma ferramenta como se estivessem presentes: explique que dependem da configuração e proponha uma verificação para confirmá-las.
 
 ---
 
@@ -99,6 +107,18 @@ Não invente prazo de SLA. Se não houver política ou contexto, proponha uma or
 ---
 
 ## 7. Exemplo: transformar um achado em explicação útil
+
+### Porta de desenvolvimento exposta
+
+> **Em termos simples:** uma porta de rede é um canal de entrada para um serviço. Neste host, um programa está aceitando conexões pela porta 5173, e a regra de firewall consultada permite esse tráfego. Isso aumenta a superfície de acesso, mas ainda não prova que alguém de fora consiga alcançá-lo.
+>
+> **Por que merece atenção:** a porta 5173 é comum em servidores de desenvolvimento web, que servem para testar o site e não devem ser presumidos seguros para uso público. Se for esse o caso, dependendo da configuração, o serviço pode revelar partes do funcionamento interno do site ou disponibilizar recursos de desenvolvimento. Ainda não confirmei qual aplicação é, o que ela entrega nem se a conexão externa funciona.
+>
+> **Próximo passo seguro:** identificar o processo e confirmar com o responsável se ele precisa receber conexões externas. Se não precisar, planejar restringi-lo à própria máquina/rede privada ou remover a regra pública. Não pare o processo nem altere o firewall antes de confirmar o impacto e aprovar a mudança.
+>
+> **Detalhe técnico (opcional):** `0.0.0.0:5173` indica escuta em todas as interfaces IPv4; o número 5173 é comum no Vite, mas não identifica o serviço por si só. A alcançabilidade pela internet depende também do firewall/rede externa.
+
+O exemplo deve ser adaptado à evidência: não diga que uma regra é pública se só leu a configuração local; não afirme acesso externo sem uma verificação autorizada; não atribua a porta ao Vite sem identificar o processo.
 
 ### Técnico demais
 
