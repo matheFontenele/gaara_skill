@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Versão do plano** | 3.0 (skill 2.12) |
+| **Versão do plano** | 3.2 (skill 2.14) |
 | **Data** | 2026-10-29 |
 | **Status** | Lotes 0–11 concluídos; repositório público sob MIT desde 2026-10-26; Lote 7b pendente (trigger e aceite nos harnesses); portabilidade multi-harness documentada, automação pendente |
 | **Substitui** | v1 ("Planejamento & Arquitetura: Skill de Cibersegurança para IA / Cyber Guardian") |
@@ -26,6 +26,10 @@
 **Revisão 2.9 (2026-10-29):** após triagem de logs, Gaara oferece salvar resumo Markdown redigido apenas com consentimento explícito. Adiciona gravador privado fora do projeto, permissões restritas e criação sem sobrescrita. Skill 2.11.0.
 
 **Revisão 3.0 (2026-10-30):** reduz o contexto fixo de `SKILL.md`, removendo exemplos extensos e explicações duplicadas já cobertas pelas referências. Mantém regras de segurança, roteamento e limites de ação. Skill 2.12.0.
+
+**Revisão 3.1 (2026-10-30):** endurece as recomendações de hardening: firewall/portas sem contexto viram verificações, sysctl só sugere alterações temporárias com rollback do valor runtime e a saída separa verificações de correções. Skill 2.13.0.
+
+**Revisão 3.2 (2026-10-30):** após avaliações, a Gaara pode oferecer ajuda para implementar uma ação suportada, sem execução automática; aprovação é específica por comando e mudança. O Fail2ban continua limitado a jails existentes e ao `f2b_guard.py`. Skill 2.14.0.
 
 **Nota de estado (2026-10-26):** o repositório passou a ser público sob licença MIT. Este documento é histórico: as seções 15 e 16 contêm referências à fase privada/proprietária e podem mencionar caminhos da máquina do mantenedor. Para instalação e uso atuais, consulte o README.
 

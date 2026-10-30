@@ -8,8 +8,8 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 
 | Item | Estado |
 |---|---|
-| Versão | 2.12 |
-| Testes | 184/184 no host e no sandbox Docker |
+| Versão | 2.14 |
+| Testes | 190/190 no host e no sandbox Docker |
 | Harnesses documentados | OpenCode, Hermes Agent, Codex, Claude Code, Gemini/Antigravity e agentes genéricos |
 | Distribuição | pública; clone via HTTPS ou SSH |
 | Licença | MIT |
@@ -29,7 +29,8 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 | Código PHP | “tem eval/SQL injection no código?”, “o que quebra no PHP 8?” | Auditoria estática e bloqueios de migração |
 | Vulnerabilidades do projeto | “meu projeto tem alguma vulnerabilidade?”, “tem CVE nas dependências?”, “como estamos no OWASP?” | Resumo em linguagem clara, próximos passos e detalhes técnicos com cobertura declarada |
 | SBOM, CI e comparação | “gera SBOM/SARIF”, “o que mudou desde a última avaliação?” | CycloneDX, SPDX, SARIF 2.1.0 e delta entre relatórios JSON |
-| Ação Fail2ban | “bane esse IP”, “posso executar?” | Dry-run; ban/unban só com aprovação explícita |
+| Remediação opcional | “pode ajudar a corrigir esse achado?” | Oferta após avaliação; ações suportadas são item a item e exigem aprovação específica |
+| Ação Fail2ban | “bane esse IP”, “posso executar?” | Dry-run; ban/unban em jail existente via `f2b_guard.py`, só com aprovação explícita |
 | Relatório | “como documento isso?” | Relatório técnico ou executivo em português |
 
 **Fora de escopo:** pentest, exploit, scan em terceiros, bypass de controle, engenharia reversa de malware e resposta a incidente em Windows/Active Directory.

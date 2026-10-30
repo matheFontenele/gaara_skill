@@ -1,6 +1,6 @@
 <!-- gaara-module
 id: hardening-linux
-version: 1.0
+version: 1.1
 requires: [finding-schema, severity-matrix, safe-operations]
 scripts: [harden_check]
 -->
@@ -94,7 +94,7 @@ No relatório aparecem:
 - **Score:** 0–100 ou "não calculado";
 - **Cobertura:** peso avaliado / peso total;
 - **Veredito:** `estavel`, `atencao` ou `incidente`, derivado dos achados;
-- **Top 5 correções:** priorizadas por severidade e peso.
+- **Correções priorizadas:** até cinco ações diretas; verificações de contexto aparecem separadas e não são apresentadas como correções.
 
 Faixas de leitura (heurística, não certificação): 90–100 boa; 70–89 razoável; 40–69 fraca; 0–39 crítica. O veredito e os achados mandam mais que o número.
 
@@ -271,14 +271,16 @@ Exemplos:
 | Achado | Correção segura | Risco | Rollback |
 |---|---|---|---|
 | root login SSH | `PermitRootLogin no`, testar `sshd -t`, recarregar | perder acesso se não houver outro usuário/chave | restaurar backup e recarregar |
-| firewall desabilitado | `ufw default deny incoming`, liberar SSH, `ufw enable` | lockout se a porta SSH não for liberada | `ufw disable` via console |
-| ASLR 0 | `sysctl -w kernel.randomize_va_space=2` + persistir | baixo | voltar valor antigo |
+| UFW desabilitado | confirmar firewall efetivo, porta SSH e console de recuperação; só então planejar regras | lockout ou interrupção de serviço | depende do plano e do backup das regras anteriores |
+| ASLR 0 | `sysctl -w kernel.randomize_va_space=2` (runtime; não persiste após reboot) | baixo | `sysctl -w kernel.randomize_va_space=<valor-anterior>` |
 | `/etc/shadow` 0644 | `chmod 0640` e `chown root:shadow` | baixo | restaurar backup |
-| container com DB publicado | remover `ports:` do compose e recriar, ou `ufw deny <porta>/tcp` | app deixa de ser acessado | restaurar compose/regra |
+| container com DB publicado | confirmar necessidade e alcance; restringir o bind/configuração do serviço de forma planejada | app deixa de ser acessado | restaurar configuração/compose anterior |
 | TLS 1.0 | `ssl_protocols TLSv1.2 TLSv1.3` + reload | cliente antigo perde acesso | backup + reload |
 | UID 0 extra | bloquear conta e investigar antes de remover | pode quebrar automação | reverter bloqueio |
 
 Nunca aplique todas as correções de uma vez. Uma mudança por vez, com evidência preservada e rollback testado.
+
+O auditor não deve sugerir `ufw enable`/`default deny` nem bloqueios UFW para achados de portas sem confirmar firewall efetivo, porta SSH, necessidade do serviço e caminho de recuperação. Esses casos são **verificações antes de corrigir**, sem comando de alteração gerado. Comandos `sysctl -w` emitidos pelo auditor mudam apenas valores em runtime; não editam arquivos persistentes. Persistência exige plano separado, backup preservado e rollback que restaure exatamente o arquivo anterior. Valores `unknown`/não avaliados são verificações pendentes, nunca correções nem evidência de que um controle inexiste.
 
 ---
 

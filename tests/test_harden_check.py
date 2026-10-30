@@ -22,6 +22,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -354,12 +355,108 @@ class HardenCheckTest(unittest.TestCase):
         )
         self.assertEqual(harden_check.parse_docker_ports(text), [(3307, 3306, "tcp")])
 
-    def test_firewall_disabled_reports_high(self) -> None:
-        result, proc = self.run_json(self.root("vuln"))
-        self.assertEqual(proc.returncode, 3)
-        finding = self.by_key(result, "firewall.enabled")
-        self.assertTrue(finding)
-        self.assertEqual(finding[0]["severity"], "alto")
+    def test_exposed_listener_does_not_emit_ufw_command_without_firewall_context(self) -> None:
+        host = harden_check.Host(self.root("good"), True, harden_check.parse_now(NOW))
+        host.no_commands = False
+        proc = subprocess.CompletedProcess(
+            ["ss"], 0, "LISTEN 0 128 0.0.0.0:3306 0.0.0.0:*\n", ""
+        )
+        with patch.object(host, "run", return_value=proc):
+            finding = harden_check.check_listening(host, set())[0]
+        self.assertEqual(finding.action, "investigate")
+        self.assertIsNone(finding.command)
+        self.assertIsNone(finding.rollback)
+        self.assertIn("firewall local/externo", finding.false_positive_notes)
+
+    def test_docker_published_database_port_is_context_check_not_ufw_block(self) -> None:
+        host = harden_check.Host(self.root("good"), True, harden_check.parse_now(NOW))
+        host.no_commands = False
+        outputs = [
+            subprocess.CompletedProcess(
+                ["docker", "ps"], 0,
+                json.dumps({"Names": "db", "Ports": "0.0.0.0:3306->3306/tcp"}) + "\n", "",
+            ),
+            subprocess.CompletedProcess(["docker", "ps", "-q"], 0, "container-id\n", ""),
+            subprocess.CompletedProcess(["docker", "inspect"], 0, "/db\tfalse\tbridge\n", ""),
+        ]
+        with patch.object(harden_check.shutil, "which", return_value="/usr/bin/docker"):
+            with patch.object(host, "run", side_effect=outputs):
+                findings = harden_check.check_docker(host)
+        finding = next(item for item in findings if item.key == "docker.published_high_risk")
+        self.assertEqual(finding.action, "investigate")
+        self.assertIsNone(finding.command)
+        self.assertIsNone(finding.rollback)
+
+    def test_ufw_config_without_effective_status_is_unknown_and_unscored(self) -> None:
+        root = self.root("vuln")
+        host = harden_check.Host(root, True, harden_check.parse_now(NOW))
+        controls = harden_check.check_firewall(host)
+        self.assertEqual(controls[0].status, "unknown")
+        self.assertIn("ENABLED=no", controls[0].excerpt)
+        score, _, assessed, total, _ = harden_check.score_controls(controls)
+        self.assertIsNone(score)
+        self.assertEqual(assessed, 0)
+        self.assertEqual(total, 12)
+
+    def test_confirmed_inactive_ufw_is_investigation_without_generic_enable_command(self) -> None:
+        root = self.root("vuln")
+        host = harden_check.Host(root, True, harden_check.parse_now(NOW))
+        host.no_commands = False
+
+        def run(argv: list[str], timeout: int = 8) -> subprocess.CompletedProcess[str]:
+            if argv[:2] == ["ufw", "status"]:
+                return subprocess.CompletedProcess(argv, 0, "Status: inactive\n", "")
+            if argv[:2] == ["systemctl", "is-active"]:
+                return subprocess.CompletedProcess(argv, 3, "inactive\n", "")
+            if argv[:2] == ["nft", "list"]:
+                return subprocess.CompletedProcess(argv, 0, "", "")
+            if argv[:2] == ["iptables", "-S"]:
+                return subprocess.CompletedProcess(argv, 0, "-P INPUT ACCEPT\n", "")
+            return subprocess.CompletedProcess(argv, 127, "", "not found")
+
+        with patch.object(host, "run", side_effect=run):
+            finding = harden_check.check_firewall(host)[0]
+        self.assertEqual(finding.status, "fail")
+        self.assertEqual(finding.severity, "alto")
+        self.assertEqual(finding.action, "investigate")
+        self.assertIsNone(finding.command)
+        self.assertIsNone(finding.rollback)
+        self.assertIn("porta SSH real", finding.false_positive_notes)
+
+    def test_sysctl_recommendations_are_runtime_only_with_runtime_rollback(self) -> None:
+        result, _ = self.run_json(self.root("vuln"))
+        expected = {
+            "kernel.aslr": ("sysctl -w kernel.randomize_va_space=2",
+                            "sysctl -w kernel.randomize_va_space=0"),
+            "net.syncookies": ("sysctl -w net.ipv4.tcp_syncookies=1",
+                               "sysctl -w net.ipv4.tcp_syncookies=0"),
+            "net.accept_redirects": (
+                "sysctl -w net.ipv4.conf.all.accept_redirects=0 net.ipv4.conf.default.accept_redirects=0",
+                "sysctl -w net.ipv4.conf.all.accept_redirects=1 net.ipv4.conf.default.accept_redirects=1",
+            ),
+            "fs.protected_links": (
+                "sysctl -w fs.protected_hardlinks=1 fs.protected_symlinks=1",
+                "sysctl -w fs.protected_hardlinks=0 fs.protected_symlinks=0",
+            ),
+        }
+        for key, (command, rollback) in expected.items():
+            with self.subTest(key=key):
+                finding = self.by_key(result, key)[0]
+                rec = finding["recommendation"]
+                self.assertEqual(rec["command"], command)
+                self.assertEqual(rec["rollback"], rollback)
+                self.assertNotIn("/etc/sysctl.d/", rec["command"])
+                self.assertNotIn("/etc/sysctl.d/", rec["rollback"])
+                self.assertIn("runtime", finding["impact"])
+
+    def test_redirects_cover_existing_interfaces_and_restore_each_runtime_value(self) -> None:
+        root = self.root("vuln")
+        write(root / "proc/sys/net/ipv4/conf/enp0s3/accept_redirects", "1\n")
+        result, _ = self.run_json(root)
+        finding = self.by_key(result, "net.accept_redirects")[0]
+        rec = finding["recommendation"]
+        self.assertIn("net.ipv4.conf.enp0s3.accept_redirects=0", rec["command"])
+        self.assertIn("net.ipv4.conf.enp0s3.accept_redirects=1", rec["rollback"])
 
     def test_ufw_config_parser_accepts_quotes(self) -> None:
         root = self.root("good")
@@ -501,6 +598,14 @@ class HardenCheckTest(unittest.TestCase):
         self.assertIn("**Score:**", text)
         self.assertIn("somente leitura", text)
         self.assertNotIn("BEGIN PRIVATE KEY", text)
+
+    def test_markdown_separates_corrections_from_context_checks(self) -> None:
+        result, _ = self.run_json(self.root("vuln"))
+        text = harden_check.render_markdown(result)
+        corrections = text.split("## Correções priorizadas (revisar e aprovar)", 1)[1].split("## ", 1)[0]
+        self.assertNotIn("UFW desabilitado", corrections)
+        not_observed = text.split("## Não observado", 1)[1]
+        self.assertIn("ENABLED=no", not_observed)
 
     def test_missing_app_root_is_usage_error(self) -> None:
         proc = self.run_script(self.root("good"), "--app-root", str(self.tmp / "nao-existe"))
