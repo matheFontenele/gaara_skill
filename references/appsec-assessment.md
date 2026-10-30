@@ -200,6 +200,8 @@ Detalhe técnico: {CVE/GHSA, versão, fonte e data}
 
 Informe quantos outros achados existem e mantenha a lista detalhada disponível. Diferencie contagem de pacote+versão, advisories distintos e CVEs únicos; muitos registros repetidos não significam necessariamente muitas falhas distintas.
 
+Traduza na primeira menção os termos que o público pode não conhecer (por exemplo, `composer.lock`, advisory, token, restrição `^1.36` e nome de método). Explique o significado prático no corpo e mantenha o identificador exato no detalhe técnico. Ao citar CVE/GHSA, faixa ou versão corrigida, inclua link direto para a fonte primária e data da consulta; o identificador sozinho não basta. Se não puder verificar a fonte, marque como pendente de verificação.
+
 ### 7.3 Cobertura e limites
 
 ```
