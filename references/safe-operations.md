@@ -1,6 +1,6 @@
 <!-- gaara-module
 id: safe-operations
-version: 1.1
+version: 1.2
 requires: [finding-schema]
 scripts: [f2b_guard]
 -->
@@ -19,6 +19,16 @@ scripts: [f2b_guard]
 4. **Evidência antes da ação.** Preserve o log antes de mexer.
 5. **Fail-closed.** Em dúvida sobre allowlist ou validação, **não aja**.
 6. **Aprovação humana é obrigatória** para ampliar bloqueio, não uma formalidade. A remoção automática de um TTL já aprovado (`sweep`) é a única exceção — e só reduz bloqueio.
+7. **Remediação é opt-in e item a item.** Depois de uma avaliação, a Gaara pode oferecer ajuda com uma ação que esteja explicitamente permitida e para a qual a ferramenta esteja disponível. A oferta ou o aceite para “ajudar” não substitui a aprovação do comando exato.
+
+### 1.1 Oferta após avaliação
+
+- Só ofereça ações relacionadas aos achados e à finalidade informada; priorize uma mudança pequena, verificável e reversível.
+- Verifique a disponibilidade do executável e, quando relevante, do serviço/jail em modo somente leitura. Não deduza que uma ferramenta está ativa porque o binário existe.
+- Informe com clareza o que a Gaara pode executar com a allowlist atual e o que só pode orientar. Se não houver capacidade ou permissão, não improvise outro mecanismo.
+- Para Fail2ban, `f2b_guard.py` só pode agir sobre um jail existente, configurado e permitido. Não instala/configura o Fail2ban, não cria jail e não altera firewall.
+- A pergunta “quer que eu ajude a aplicar?” não é autorização de execução. Após o aceite, faça dry-run e apresente a proposta completa da §4; só o aceite explícito daquela proposta autoriza uma ação, na mesma sessão.
+- Nunca agrupe várias mudanças num único aceite. Faça uma por vez, valide o resultado e só então discuta a próxima.
 
 ---
 

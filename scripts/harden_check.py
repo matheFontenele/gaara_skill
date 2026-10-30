@@ -649,35 +649,36 @@ def check_firewall(host: Host) -> list[Control]:
             source_type=source_type,
         )]
 
+    if ufw_status is None and ufw_enabled is not None:
+        configured = "ENABLED=yes" if ufw_enabled else "ENABLED=no"
+        return [_unknown(
+            "firewall.enabled", "Firewall efetivo", "posture/firewall", 12,
+            f"UFW {configured}, mas o estado efetivo não foi confirmado; outras regras locais/externas não foram descartadas",
+            source,
+        )]
+
     if ufw_status == "inactive" or ufw_enabled is False:
         value = "ufw desabilitado" if ufw_enabled is False else "ufw inativo"
         return [_control(
-            key="firewall.enabled", title="Firewall de entrada desabilitado",
+            key="firewall.enabled", title="UFW desabilitado; filtragem efetiva não confirmada",
             category="posture/firewall", weight=12, severity="alto", status="fail",
             value=value, source=source, locator="estado do firewall",
             excerpt=value + (f" ({'; '.join(details)})" if details else ""),
-            impact="Portas expostas dependem apenas da aplicação e de security groups externos.",
+            impact=(
+                "A configuração/estado do UFW indica que ele está desabilitado; "
+                "isso não confirma que outras regras locais ou controles externos estejam ausentes."
+            ),
             confidence="alta" if ufw_status == "inactive" else "media",
-            action="patch",
-            command="cp -a /etc/ufw /etc/ufw.gaara.bak && ufw default deny incoming && ufw allow 22/tcp && ufw enable",
-            rollback="ufw disable && cp -a /etc/ufw.gaara.bak /etc/ufw",
-            false_positive_notes="Firewall de nuvem/security group pode existir fora do host; confirme antes.",
-            source_type=source_type,
-        )]
-
-    if ufw_enabled is True:
-        host.notes.append(
-            "firewall: ENABLED=yes no UFW, mas o status efetivo não foi confirmado sem root"
-        )
-        return [_control(
-            key="firewall.enabled", title="Firewall configurado para iniciar",
-            category="posture/firewall", weight=12, severity="alto", status="pass",
-            value="ufw habilitado na configuração; status efetivo não confirmado",
-            source=source, locator="estado do firewall",
-            excerpt="ENABLED=yes; confirme o estado efetivo com ufw status",
-            impact="A configuração indica firewall habilitado, mas o estado efetivo não foi lido.",
-            confidence="media", action="none",
-            not_observed=["saída de ufw status não disponível sem root"],
+            action="investigate",
+            false_positive_notes=(
+                "Antes de planejar uma regra, confirme a filtragem efetiva (UFW/nftables/iptables), "
+                "a porta SSH real e um caminho de recuperação por console. Não habilite UFW "
+                "nem aplique política default deny com base apenas neste achado."
+            ),
+            not_observed=[
+                "filtragem efetiva por outras ferramentas, regras de nuvem/security group, "
+                "porta SSH ativa e acesso de recuperação"
+            ],
             source_type=source_type,
         )]
 
@@ -708,10 +709,13 @@ def check_kernel(host: Host) -> list[Control]:
             weight=8, severity=severity, status=status, value=aslr,
             source="/proc/sys/kernel/randomize_va_space", locator="valor atual",
             excerpt=f"randomize_va_space={aslr}; esperado: 2",
-            impact="ASLR fraco facilita exploração de corrupção de memória.",
+            impact=(
+                "ASLR fraco facilita exploração de corrupção de memória. O comando sugerido "
+                "muda apenas o valor em runtime; não grava configuração persistente."
+            ),
             action="patch",
-            command="sysctl -w kernel.randomize_va_space=2 && printf '%s\\n' 'kernel.randomize_va_space=2' >> /etc/sysctl.d/99-gaara.conf",
-            rollback=f"sysctl -w kernel.randomize_va_space={aslr} && sed -i '/^kernel\\.randomize_va_space=/d' /etc/sysctl.d/99-gaara.conf",
+            command="sysctl -w kernel.randomize_va_space=2",
+            rollback=f"sysctl -w kernel.randomize_va_space={aslr}",
         ))
 
     syncookies = host.proc_value("net/ipv4/tcp_syncookies")
@@ -724,31 +728,66 @@ def check_kernel(host: Host) -> list[Control]:
             weight=4, severity="medio", status="pass" if syncookies in {"1", "2"} else "fail",
             value=syncookies, source="/proc/sys/net/ipv4/tcp_syncookies", locator="valor atual",
             excerpt=f"tcp_syncookies={syncookies}; esperado: 1",
-            impact="Sem SYN cookies, SYN flood pode esgotar a fila de conexões.",
+            impact=(
+                "Sem SYN cookies, SYN flood pode esgotar a fila de conexões. O comando sugerido "
+                "muda apenas o valor em runtime; não grava configuração persistente."
+            ),
             action="patch",
-            command="sysctl -w net.ipv4.tcp_syncookies=1 && printf '%s\\n' 'net.ipv4.tcp_syncookies=1' >> /etc/sysctl.d/99-gaara.conf",
-            rollback=f"sysctl -w net.ipv4.tcp_syncookies={syncookies} && sed -i '/^net\\.ipv4\\.tcp_syncookies=/d' /etc/sysctl.d/99-gaara.conf",
+            command="sysctl -w net.ipv4.tcp_syncookies=1",
+            rollback=f"sysctl -w net.ipv4.tcp_syncookies={syncookies}",
         ))
 
     redirects = {
         "all": host.proc_value("net/ipv4/conf/all/accept_redirects"),
         "default": host.proc_value("net/ipv4/conf/default/accept_redirects"),
     }
+    conf_root = host.path("/proc/sys/net/ipv4/conf")
+    if conf_root.is_dir():
+        for value_path in host.glob("/proc/sys/net/ipv4/conf/*/accept_redirects"):
+            interface = value_path.parent.name
+            if interface in redirects:
+                continue
+            relative = "/" + str(value_path.relative_to(host.root))
+            text = host.read_text(relative)
+            redirects[interface] = text.strip() if text and text.strip() else None
     if any(value is None for value in redirects.values()):
         controls.append(_unknown("net.accept_redirects", "Redirects ICMP", "posture/firewall", 5,
-                                 "accept_redirects não legível em all/default"))
+                                 "accept_redirects não legível em all/default ou interface"))
     else:
         bad = [name for name, value in redirects.items() if value != "0"]
+        # Interface names come from /proc, but validate before embedding them in
+        # copyable shell text. If an unusual name appears, withhold the command.
+        safe_names = all(re.fullmatch(r"[A-Za-z0-9_.:-]{1,15}", name) for name in redirects)
+        ordered_redirects = ["all", "default"] + sorted(
+            name for name in redirects if name not in {"all", "default"}
+        )
+        redirect_command = "sysctl -w " + " ".join(
+            f"net.ipv4.conf.{name}.accept_redirects=0" for name in ordered_redirects
+        )
+        redirect_rollback = "sysctl -w " + " ".join(
+            f"net.ipv4.conf.{name}.accept_redirects={redirects[name]}"
+            for name in ordered_redirects
+        )
         controls.append(_control(
             key="net.accept_redirects", title="Redirects ICMP", category="posture/firewall",
             weight=5, severity="medio", status="fail" if bad else "pass",
             value=", ".join(f"{name}={value}" for name, value in redirects.items()),
             source="/proc/sys/net/ipv4/conf", locator="all/default",
             excerpt=", ".join(f"{name}={value}" for name, value in redirects.items()),
-            impact="Redirects ICMP podem desviar tráfego e facilitar MITM.",
-            action="patch",
-            command="sysctl -w net.ipv4.conf.all.accept_redirects=0 net.ipv4.conf.default.accept_redirects=0 && printf '%s\\n' 'net.ipv4.conf.all.accept_redirects=0' 'net.ipv4.conf.default.accept_redirects=0' >> /etc/sysctl.d/99-gaara.conf",
-            rollback=f"sysctl -w net.ipv4.conf.all.accept_redirects={redirects['all']} net.ipv4.conf.default.accept_redirects={redirects['default']} && sed -i '/^net\\.ipv4\\.conf\\.\\(all\\|default\\)\\.accept_redirects=/d' /etc/sysctl.d/99-gaara.conf",
+            impact=(
+                "Redirects ICMP podem desviar tráfego e facilitar MITM. O comando sugerido "
+                "muda all/default e interfaces existentes apenas em runtime; não grava "
+                "configuração persistente."
+            ),
+            action="patch" if safe_names else "investigate",
+            command=redirect_command if safe_names else None,
+            rollback=redirect_rollback if safe_names else None,
+            false_positive_notes=(
+                "A recomendação só cobre interfaces presentes durante a auditoria; "
+                "repita a verificação após criar interfaces."
+                if safe_names else
+                "Nome de interface fora do formato seguro para comando copiável; revisar manualmente."
+            ),
         ))
 
     rp_filter = {
@@ -787,10 +826,16 @@ def check_kernel(host: Host) -> list[Control]:
             value=", ".join(f"{name}={value}" for name, value in protected.items()),
             source="/proc/sys/fs", locator="protected_hardlinks/symlinks",
             excerpt=", ".join(f"{name}={value}" for name, value in protected.items()),
-            impact="Links previsíveis em /tmp podem ser usados para sobrescrever arquivos.",
+            impact=(
+                "Links previsíveis em /tmp podem ser usados para sobrescrever arquivos. "
+                "O comando sugerido muda apenas os valores em runtime; não grava configuração persistente."
+            ),
             action="patch",
-            command="sysctl -w fs.protected_hardlinks=1 fs.protected_symlinks=1 && printf '%s\\n' 'fs.protected_hardlinks=1' 'fs.protected_symlinks=1' >> /etc/sysctl.d/99-gaara.conf",
-            rollback=f"sysctl -w fs.protected_hardlinks={protected['hardlinks']} fs.protected_symlinks={protected['symlinks']} && sed -i '/^fs\\.protected_\\(hardlinks\\|symlinks\\)=/d' /etc/sysctl.d/99-gaara.conf",
+            command="sysctl -w fs.protected_hardlinks=1 fs.protected_symlinks=1",
+            rollback=(
+                f"sysctl -w fs.protected_hardlinks={protected['hardlinks']} "
+                f"fs.protected_symlinks={protected['symlinks']}"
+            ),
         ))
 
     kptr = host.proc_value("kernel/kptr_restrict")
@@ -1316,11 +1361,16 @@ def check_docker(host: Host) -> list[Control]:
             value=", ".join(str(port) for port in high),
             source="docker ps", locator="Ports", source_type="command",
             excerpt="portas publicadas: " + ", ".join(str(port) for port in high),
-            impact="Serviço sensível pode ser alcançado fora do host, sujeito apenas à autenticação do serviço.",
-            action="isolate",
-            command="ufw deny " + " && ufw deny ".join(f"{port}/tcp" for port in high),
-            rollback="ufw delete " + " && ufw delete ".join(f"deny {port}/tcp" for port in high),
-            false_positive_notes="Confirme se a exposição é intencional e se há security group/VPN.",
+            impact=(
+                "A porta está publicada em interfaces do host; a alcançabilidade depende "
+                "das regras locais/externas e isso, por si só, não prova exposição à internet."
+            ),
+            action="investigate",
+            false_positive_notes=(
+                "Confirme necessidade, endereço de bind, firewall local/externo, VPN e autenticação. "
+                "Não emita bloqueio UFW automático: a ferramenta/firewall efetivo pode ser outro."
+            ),
+            not_observed=["alcance externo efetivo e regras de filtragem"],
             observations={"containers": names, "ports": high},
         ))
     else:
@@ -1428,11 +1478,16 @@ def check_listening(host: Host, docker_high: set[int]) -> list[Control]:
             value=", ".join(str(port) for port in exposed), source=source,
             locator="LISTEN 0.0.0.0/[::]", source_type=source_type,
             excerpt="portas em todas as interfaces: " + ", ".join(str(port) for port in exposed),
-            impact="Serviço sensível alcançável fora do host, sujeito à autenticação do serviço.",
-            action="isolate",
-            command="ufw deny " + " && ufw deny ".join(f"{port}/tcp" for port in exposed),
-            rollback="ufw delete " + " && ufw delete ".join(f"deny {port}/tcp" for port in exposed),
-            false_positive_notes="Pode ser protegido por firewall externo/VPN; confirme antes de bloquear.",
+            impact=(
+                "A porta escuta em todas as interfaces; a alcançabilidade depende das regras "
+                "locais/externas e isso, por si só, não prova exposição à internet."
+            ),
+            action="investigate",
+            false_positive_notes=(
+                "Confirme serviço, necessidade, firewall local/externo e VPN antes de escolher "
+                "entre restringir o bind, alterar a configuração do serviço ou criar uma regra."
+            ),
+            not_observed=["alcance externo efetivo e regras de filtragem"],
         )]
     return [_control(
         key="net.listening", title="Portas em todas as interfaces",
@@ -1811,14 +1866,38 @@ def render_markdown(result: dict[str, Any]) -> str:
             "",
         ]
 
-    actionable = [item for item in result["findings"] if item["recommendation"]["action"] in {"patch", "isolate"}]
-    top = (actionable or result["findings"])[:5]
-    if top:
-        lines += ["## Top 5 correções", "", "| # | Correção | Sev | Peso | Ação |", "|---|---|---|---|---|"]
-        for index, item in enumerate(top, 1):
+    actionable = [
+        item for item in result["findings"]
+        if item["recommendation"]["action"] in {"patch", "isolate"}
+    ]
+    if actionable:
+        lines += [
+            "## Correções priorizadas (revisar e aprovar)", "",
+            "| # | Correção | Sev | Peso | Ação |", "|---|---|---|---|---|",
+        ]
+        for index, item in enumerate(actionable[:5], 1):
             lines.append(
                 f"| {index} | {item['title']} | {SEVERITY_LABEL[item['severity']]} | "
                 f"{item['observations'].get('weight', '?')} | {item['recommendation']['action']} |"
+            )
+        lines.append("")
+    else:
+        lines += [
+            "## Correções priorizadas", "",
+            "Nenhuma correção direta foi sugerida sem contexto adicional.", "",
+        ]
+
+    needs_review = [
+        item for item in result["findings"]
+        if item["recommendation"]["action"] not in {"patch", "isolate"}
+    ]
+    if needs_review:
+        lines += ["## Verificações antes de corrigir", ""]
+        for item in needs_review:
+            lines.append(
+                f"- **{SEVERITY_LABEL[item['severity']]} — {item['title']}**: "
+                f"verificação necessária antes de escolher a correção "
+                f"(`{item['recommendation']['action']}`)."
             )
         lines.append("")
 
