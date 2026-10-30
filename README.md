@@ -8,7 +8,7 @@ O princípio é simples: **observar, correlacionar e recomendar**. A skill só a
 
 | Item | Estado |
 |---|---|
-| Versão | 2.11 |
+| Versão | 2.12 |
 | Testes | 184/184 no host e no sandbox Docker |
 | Harnesses documentados | OpenCode, Hermes Agent, Codex, Claude Code, Gemini/Antigravity e agentes genéricos |
 | Distribuição | pública; clone via HTTPS ou SSH |
