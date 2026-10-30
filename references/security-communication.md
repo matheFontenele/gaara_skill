@@ -1,6 +1,6 @@
 <!-- gaara-module
 id: security-communication
-version: 1.1
+version: 1.2
 requires: [finding-schema, severity-matrix]
 scripts: []
 -->
@@ -53,10 +53,21 @@ Para achados múltiplos, mostre primeiro até três prioridades; diga quantos it
 | Servidor de desenvolvimento | serviço usado para construir/testar uma aplicação; não deve ser considerado pronto para exposição pública sem validação |
 | Vite / Node.js | Vite é uma ferramenta comum de desenvolvimento web; Node.js é o programa que pode executá-la. Porta 5173 sugere Vite, mas não confirma a identidade do serviço |
 | Túnel SSH | conexão criptografada que encaminha uma porta local até um servidor; pode dar acesso privado sem abrir o serviço para toda a internet |
+| SQL | linguagem usada pela aplicação para pedir ao banco de dados que consulte ou altere informações |
+| Injeção SQL | quando texto recebido pela aplicação acaba sendo interpretado pelo banco como parte do comando, em vez de apenas como dado |
+| Consulta preparada / parametrizada | forma de enviar comando e valores separadamente, para que o banco trate a entrada como dado |
+| Advisory | aviso publicado por um fornecedor ou base de segurança sobre uma falha conhecida |
+| Token | credencial secreta que pode permitir acesso a um serviço ou API; não revele o valor no relatório |
+| `composer.lock` | arquivo PHP que registra as versões exatas das bibliotecas escolhidas para o projeto |
+| `^1.36` no Composer | restrição de versão: permite versões compatíveis dentro da série 1.x; não significa que qualquer versão corrigida possa ser usada |
+| Runtime | versão do programa que está realmente rodando no servidor, que pode ser diferente da registrada no projeto |
+| Método como `Carbon::setLocale` | função específica de uma biblioteca; explique em palavras o que ela faz e só então mostre o nome do método |
 
 Evite siglas em títulos. Se a sigla for necessária, escreva o significado na primeira menção.
 
 **Não empilhe jargão.** Dê primeiro a consequência em linguagem comum; deixe termos como bind, interface, proxy, HMR, source map e socket para uma seção técnica, e só inclua os que ajudam a decidir. Não liste capacidades hipotéticas de uma ferramenta como se estivessem presentes: explique que dependem da configuração e proponha uma verificação para confirmá-las.
+
+Para fatos externos (CVE/advisory, versão corrigida, suporte ou severidade), cite link direto para a fonte e data de consulta. Um ID como `CVE-...` ou `GHSA-...` sozinho não é citação suficiente. Se não verificou a fonte, diga isso e não apresente a afirmação como confirmada.
 
 ---
 
@@ -108,6 +119,34 @@ Não invente prazo de SLA. Se não houver política ou contexto, proponha uma or
 
 ## 7. Exemplo: transformar um achado em explicação útil
 
+### Dados do formulário concatenados a uma consulta
+
+> **Em termos simples:** o programa pega o texto digitado no formulário e o encaixa diretamente nas instruções que envia ao banco de dados. Um apóstrofo em um nome como “D'Ávila” pode quebrar o cadastro. Uma entrada maliciosa também poderia ser interpretada como parte das instruções — isso é chamado de injeção SQL.
+>
+> **O que confirmei:** o código monta a instrução dessa forma. Não tentei explorar a falha; portanto, não há evidência de que alguém tenha alterado ou consultado dados.
+>
+> **Próximo passo seguro:** alterar o código para enviar os valores do formulário separadamente do comando (consulta parametrizada) e revisar operações parecidas. Isso exige teste, pois pode haver outros erros no cadastro.
+>
+> **Detalhe técnico:** `Cliente.php:54–61`; valores concatenados no `INSERT` sem parâmetros. Exploração não testada.
+
+### Possível token no código
+
+> **Em termos simples:** encontrei um texto que pode ser uma chave de acesso a um serviço. O valor foi ocultado e não foi testado; ainda não sabemos se é real ou válido.
+>
+> **Próximo passo seguro:** confirmar com o responsável pelo serviço, sem publicar nem enviar o valor. Se estiver ativo, planejar a troca e atualizar onde a aplicação o utiliza.
+>
+> **Detalhe técnico:** arquivo e linha podem ser citados; nunca reproduza o token.
+
+### Dependência e aviso externo
+
+> **Em termos simples:** o arquivo que fixa as bibliotecas do projeto registra {biblioteca} na versão {versão}. O fornecedor publicou um aviso sobre uma falha que pode afetar essa versão; isso não prova que o caminho vulnerável seja usado ou que a falha tenha sido explorada.
+>
+> **O que falta confirmar:** se a aplicação chama o recurso afetado e se a mesma versão está rodando em produção. A versão corrigida precisa respeitar a faixa permitida pelo gerenciador de pacotes; não recomende um downgrade nem uma atualização incompatível.
+>
+> **Fonte:** [{fornecedor/advisory}]({URL direta}) — consultado em {data}.
+>
+> **Detalhe técnico:** {CVE/GHSA}, {arquivo:linha ou pacote@versão}, faixa afetada/corrigida e condição de alcance.
+
 ### Porta de desenvolvimento exposta
 
 > **Em termos simples:** uma porta de rede é um canal de entrada para um serviço. Neste host, um programa está aceitando conexões pela porta 5173, e a regra de firewall consultada permite esse tráfego. Isso aumenta a superfície de acesso, mas ainda não prova que alguém de fora consiga alcançá-lo.
@@ -141,6 +180,8 @@ O exemplo deve ser adaptado à evidência: não diga que uma regra é pública s
 - [ ] A primeira parte responde “o que isso significa para mim?”
 - [ ] Fato observado, impacto possível e hipótese estão separados?
 - [ ] Siglas foram explicadas ou movidas para detalhes técnicos?
+- [ ] Termos de banco, dependências e credenciais foram traduzidos sem remover os identificadores úteis?
+- [ ] Fatos externos incluem URL direta e data de consulta?
 - [ ] A severidade não foi confundida com exploração confirmada?
 - [ ] O próximo passo é específico e seguro para quem pode não ser especialista?
 - [ ] Ficou claro o que não foi verificado?
