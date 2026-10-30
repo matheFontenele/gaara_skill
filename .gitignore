@@ -28,3 +28,6 @@ id_rsa*
 .idea/
 .vscode/
 *.swp
+
+# Backlog de trabalho local (não publicar)
+TODO.local.md
