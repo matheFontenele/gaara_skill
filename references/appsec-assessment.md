@@ -83,6 +83,7 @@ O que importa nesta fase não é só a lista: é o **buraco**.
 
 - Manifest presente e não lido → `supply-chain/inventory-gap`.
 - Dependência sem versão resolvida → `supply-chain/unpinned-dependency`.
+- Quando o `composer.lock` irmão existe, as faixas do `composer.json` são constraints, não dependências sem versão; só entra como lacuna o pacote que o lock não cobre.
 - Nenhum manifest → inventário inexistente, e a resposta correta passa a ser "não avaliado".
 
 ### 4.3 Correlacionar (rede, sob demanda)

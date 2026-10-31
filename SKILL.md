@@ -1,7 +1,7 @@
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications. Triages auth and web logs for brute force, credential stuffing, scanning, path traversal, exploitation attempts and API abuse; investigates possible compromise; runs guided incident response; audits legacy and end-of-life stacks (PHP 5 and other unpatched runtimes) for dangerous patterns and missing patches; inventories project dependencies and correlates them with known vulnerabilities (CVE via OSV/NVD, active exploitation via CISA KEV, priority via EPSS), mapping findings to OWASP Top 10:2025; recommends and verifies hardening for SSH, firewall, fail2ban, TLS, file permissions and secrets. Use when the user asks to analyze logs, investigate suspicious activity, check server security posture, respond to an incident, evaluate an emergency CVE, check whether a project has vulnerabilities, or harden a server. Also triggers on Portuguese requests about segurança, logs, invasão, vulnerabilidade, OWASP, CVE, hardening and vulnerabilidades.
-version: 2.17.0
+version: 2.17.1
 license: MIT
 ---
 

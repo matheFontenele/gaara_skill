@@ -241,7 +241,7 @@ Ao exportar IoCs, **remova dados pessoais desnecessários** e informe a finalida
 Use o padrão de quatro blocos para **cada vulnerabilidade** explicada. O relatório pode ter um resumo e uma seção de cobertura, mas a explicação do achado sempre segue esta ordem.
 
 ```markdown
-# Vulnerabilidades conhecidas — {projeto} — {data}
+# Avaliação de dependências — {projeto} — {data}
 
 ## Resumo para você
 {em português claro: o que foi encontrado, se há urgência e o que não está confirmado}

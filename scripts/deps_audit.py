@@ -789,6 +789,24 @@ def build_inventory(root: Path, paths: Iterable[Path]) -> Inventory:
             seen.add(identity)
             inventory.add(package)
         inventory.manifests.append(Manifest(display, fmt, True, len(packages)))
+
+    # composer.json guarda faixas (^1.2), não versões instaladas. Quando o
+    # composer.lock irmão existe, ele é a fonte resolvida e a faixa não é uma
+    # dependência "sem versão". Só permanece como lacuna o pacote que o lock
+    # não cobre (por exemplo, uma dependência recém-adicionada).
+    locked = {
+        (str(Path(p.source).parent), p.ecosystem, p.name.lower())
+        for p in inventory.packages
+        if Path(p.source).name == "composer.lock"
+    }
+    if locked:
+        inventory.unpinned = [
+            p for p in inventory.unpinned
+            if not (
+                Path(p.source).name == "composer.json"
+                and (str(Path(p.source).parent), p.ecosystem, p.name.lower()) in locked
+            )
+        ]
     return inventory
 
 
@@ -1633,6 +1651,7 @@ def build_result(*, inventory: Inventory, hits: list[Hit], sources: list[SourceM
         "scan": {
             "id": scan_id,
             "tool": TOOL,
+            "project": root.name,
             "host": host,
             "started_at": iso(now),
             "finished_at": iso(now),
@@ -1996,8 +2015,10 @@ def render_markdown(result: dict[str, Any]) -> str:
     summary = result["summary"]
     coverage = summary.get("coverage", {})
     lines = [
-        f"# Vulnerabilidades conhecidas — {scan['host']}",
+        f"# Avaliação de dependências — {scan.get('project') or scan['host']}",
         "",
+        f"**Projeto:** {scan.get('project') or 'não informado'}",
+        f"**Host da análise:** {scan['host']}",
         f"**Veredito:** {summary['verdict']}",
         f"**Achados:** " + " · ".join(
             f"{SEVERITY_LABEL[k].lower()} {v}" for k, v in summary["counts"].items()),

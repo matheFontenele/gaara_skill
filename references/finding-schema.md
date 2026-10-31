@@ -101,6 +101,7 @@ Com schema:
 |---|---|---|
 | `id` | string | `gaara-YYYYMMDD-NNNN`, único por execução |
 | `tool` | string | Nome do script que gerou |
+| `project` | string | Opcional; nome do projeto/diretório analisado |
 | `host` | string | Hostname ou identificador |
 | `started_at` / `finished_at` | ISO 8601 UTC | Obrigatório |
 | `window.from` / `window.to` | ISO 8601 UTC | Janela analisada |

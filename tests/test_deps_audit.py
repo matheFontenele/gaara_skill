@@ -226,6 +226,37 @@ class TempParserTests(unittest.TestCase):
         self.assertEqual(found["ffi"], "1.17.0")
 
 
+class ManifestLockTests(unittest.TestCase):
+    def test_composer_json_constraints_do_not_override_sibling_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "composer.json").write_text(json.dumps({
+                "require": {
+                    "vendor/locked": "^1.2",
+                    "vendor/missing": "^9.0",
+                }
+            }), encoding="utf-8")
+            (root / "composer.lock").write_text(json.dumps({
+                "packages": [{"name": "vendor/locked", "version": "1.2.3"}],
+                "packages-dev": [],
+            }), encoding="utf-8")
+            inventory = inventory_of(root)
+            self.assertEqual([p.name for p in inventory.packages], ["vendor/locked"])
+            self.assertEqual([p.name for p in inventory.unpinned], ["vendor/missing"])
+
+    def test_markdown_title_uses_project_name_not_hostname(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "composer.lock").write_text(json.dumps({
+                "packages": [{"name": "vendor/locked", "version": "1.2.3"}],
+                "packages-dev": [],
+            }), encoding="utf-8")
+            code, output, error = run_main([str(root), "--format", "md"])
+            self.assertEqual(code, 0, error)
+            self.assertIn(f"# Avaliação de dependências — {root.name}", output)
+            self.assertIn("**Host da análise:**", output)
+
+
 class CvssTests(unittest.TestCase):
     def test_spec_examples(self) -> None:
         cases = {
