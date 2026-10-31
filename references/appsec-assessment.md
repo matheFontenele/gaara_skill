@@ -1,6 +1,6 @@
 <!-- gaara-module
 id: appsec-assessment
-version: 1.0
+version: 1.1
 requires: [finding-schema, severity-matrix, vuln-sources, legacy-stacks]
 scripts: [deps_audit.py, php_audit.py, harden_check.py]
 -->
@@ -188,17 +188,25 @@ Não use “está seguro”, “está limpo”, “foi invadido” ou “credenc
 
 ### 7.2 Achados e confirmação
 
-Mostre até três prioridades primeiro. Para cada uma, use:
+Mostre até três prioridades primeiro. Para cada vulnerabilidade, use o padrão obrigatório de quatro blocos:
 
 ```
-O que encontrei: {fato observado nos arquivos/fontes}
-Por que importa: {consequência possível e condição}
-O que falta confirmar: {uso real, produção, exposição, conta ativa etc.}
-Próximo passo seguro: {uma verificação concreta, antes de alterar}
-Detalhe técnico: {CVE/GHSA, versão, fonte e data}
+1. O que é
+   {explicação simples; CVE/GHSA, fonte e data só depois}
+
+2. Como ocorre
+   {condição necessária, parte afetada, exposição e limites}
+
+3. Quais os impactos
+   {impacto possível; o que está confirmado e o que falta confirmar}
+
+4. Como prevenir ou remediar
+   Prevenir: {atualização, configuração, ferramenta ou processo}
+   Remediar: {contenção, evidência, correção e verificação, se aplicável}
+   Detalhe técnico: {versão afetada/corrigida, CVSS, CWE, arquivo:linha, fonte e data}
 ```
 
-Informe quantos outros achados existem e mantenha a lista detalhada disponível. Diferencie contagem de pacote+versão, advisories distintos e CVEs únicos; muitos registros repetidos não significam necessariamente muitas falhas distintas.
+O modelo completo está em `references/vulnerability-standard.md`. Informe quantos outros achados existem e mantenha a lista detalhada disponível. Diferencie contagem de pacote+versão, advisories distintos e CVEs únicos; muitos registros repetidos não significam necessariamente muitas falhas distintas.
 
 Traduza na primeira menção os termos que o público pode não conhecer (por exemplo, `composer.lock`, advisory, token, restrição `^1.36` e nome de método). Explique o significado prático no corpo e mantenha o identificador exato no detalhe técnico. Ao citar CVE/GHSA, faixa ou versão corrigida, inclua link direto para a fonte primária e data da consulta; o identificador sozinho não basta. Se não puder verificar a fonte, marque como pendente de verificação.
 

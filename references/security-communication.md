@@ -1,6 +1,6 @@
 <!-- gaara-module
 id: security-communication
-version: 1.2
+version: 1.3
 requires: [finding-schema, severity-matrix]
 scripts: []
 -->
@@ -30,6 +30,17 @@ Adapte o tamanho ao pedido, mas preserve esta ordem:
 5. **Detalhes técnicos:** fontes, CVE/CVSS, caminhos, linhas e comandos — depois do resumo ou sob um subtítulo.
 
 Para achados múltiplos, mostre primeiro até três prioridades; diga quantos itens adicionais existem e disponibilize a lista completa sem omitir achados relevantes.
+
+### 2.1 Padrão obrigatório para vulnerabilidades
+
+Quando o assunto for uma vulnerabilidade — CVE, biblioteca desatualizada, falha no código, configuração insegura ou serviço exposto — use **sempre** os quatro blocos abaixo, nesta ordem:
+
+1. **O que é** — o problema em linguagem simples; identificador e fonte só depois.
+2. **Como ocorre** — condição necessária, parte afetada e exposição, sem passo a passo de ataque.
+3. **Quais os impactos** — o que pode ser afetado e o que ainda não está confirmado.
+4. **Como prevenir ou remediar** — separe prevenção de remediação, com esforço, risco e rollback.
+
+O modelo completo, com exemplos e checklist, está em `references/vulnerability-standard.md`. Não substitua os quatro blocos por uma lista de CVEs, CVSS e nomes de ferramentas.
 
 ---
 

@@ -1,7 +1,7 @@
 <!-- gaara-module
 id: report-templates
-version: 1.0
-requires: [finding-schema]
+version: 1.1
+requires: [finding-schema, vulnerability-standard]
 scripts: []
 -->
 
@@ -236,7 +236,9 @@ Ao exportar IoCs, **remova dados pessoais desnecessários** e informe a finalida
 
 ---
 
-## 6. Relatório de vulnerabilidades do projeto
+## 6. Vulnerabilidades do projeto
+
+Use o padrão de quatro blocos para **cada vulnerabilidade** explicada. O relatório pode ter um resumo e uma seção de cobertura, mas a explicação do achado sempre segue esta ordem.
 
 ```markdown
 # Vulnerabilidades conhecidas — {projeto} — {data}
@@ -244,16 +246,27 @@ Ao exportar IoCs, **remova dados pessoais desnecessários** e informe a finalida
 ## Resumo para você
 {em português claro: o que foi encontrado, se há urgência e o que não está confirmado}
 
-## O que isso pode significar
-{impacto possível, explicando condições; não afirmar exploração ou vazamento sem evidência}
+## Vulnerabilidades
 
-## Próximo passo seguro
-{uma verificação concreta antes de atualizar, rotacionar segredo ou alterar produção}
+### {nome curto da vulnerabilidade}
 
-## Detalhes técnicos
-{veredito técnico, CVE/GHSA, CVSS, versões, evidência, fontes e datas}
+#### 1. O que é
+{explicação simples; só depois cite CVE/GHSA, com link e data}
 
-## Cobertura
+#### 2. Como ocorre
+{condição necessária, parte afetada, exposição e limites; sem passo a passo de ataque}
+
+#### 3. Quais os impactos
+{impacto possível; o que está confirmado e o que ainda falta confirmar}
+
+#### 4. Como prevenir ou remediar
+**Prevenir:** {atualização, configuração, ferramenta ou processo}
+
+**Remediar:** {contenção, evidência, correção, credenciais e verificação, se aplicável}
+
+**Detalhes técnicos:** {versão afetada, versão corrigida, CVSS, CWE, arquivo:linha, fonte e data}
+
+## Cobertura e limites
 | Item | Valor |
 |---|---|
 | Dependências identificadas | {n} |
@@ -261,25 +274,19 @@ Ao exportar IoCs, **remova dados pessoais desnecessários** e informe a finalida
 | Manifests lidos / encontrados | {n} / {n} |
 | Fontes consultadas | OSV {data} · KEV {data} · EPSS {data} · NVD {data} |
 | Código avaliado | PHP: {n} arquivos · outros: não avaliado |
-| Host avaliado | não nesta execução |
-
-## Achados prioritários
-| Prioridade em palavras | O que foi encontrado | O que falta confirmar | Próxima verificação |
-|---|---|---|---|
-
-## Ordem de correção
-1. {crítico + KEV + exposto}
-2. {crítico/alto com patch}
-3. {médio com EPSS alto}
+| Produção | não verificada nesta execução |
 
 ## Não avaliado
 - OWASP A01 (controle de acesso) e A06 (design)
 - código fora de PHP
 - camadas de imagem Docker
 - zero-day e falha não publicada
+- exploração real e comprometimento do host
 
-## Próximo passo
-{uma ação concreta, objetivo e indicação se é leitura/rede/alteração; dono e prazo só se conhecidos}
+## Próximo passo seguro
+{uma ação concreta, com objetivo e indicação se é leitura/rede/alteração}
 
 > Vulnerabilidade conhecida não é comprometimento. Exploração exige correlação com log e host.
 ```
+
+Se não houver achado, não escreva “está seguro”. Escreva o que foi verificado, o que não foi e qual é a cobertura.

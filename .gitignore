@@ -29,5 +29,6 @@ id_rsa*
 .vscode/
 *.swp
 
-# Backlog de trabalho local (não publicar)
+# Backlog e planejamento interno (não publicar)
 TODO.local.md
+Documentação e Planejamento

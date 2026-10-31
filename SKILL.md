@@ -1,7 +1,7 @@
 ---
 name: gaara
 description: Defensive security copilot for Linux servers and web applications. Triages auth and web logs for brute force, credential stuffing, scanning, path traversal, exploitation attempts and API abuse; investigates possible compromise; runs guided incident response; audits legacy and end-of-life stacks (PHP 5 and other unpatched runtimes) for dangerous patterns and missing patches; inventories project dependencies and correlates them with known vulnerabilities (CVE via OSV/NVD, active exploitation via CISA KEV, priority via EPSS), mapping findings to OWASP Top 10:2025; recommends and verifies hardening for SSH, firewall, fail2ban, TLS, file permissions and secrets. Use when the user asks to analyze logs, investigate suspicious activity, check server security posture, respond to an incident, evaluate an emergency CVE, check whether a project has vulnerabilities, or harden a server. Also triggers on Portuguese requests about segurança, logs, invasão, vulnerabilidade, OWASP, CVE, hardening and vulnerabilidades.
-version: 2.16.0
+version: 2.17.0
 license: MIT
 ---
 
@@ -39,6 +39,7 @@ Abra **apenas** a referência indicada. Não carregue todas de uma vez.
 |---|---|
 | Consolidar relatórios JSON existentes em avaliação guiada, sem rodar scanners | `references/guided-assessment.md` + `scripts/assessment_report.py` |
 | Resposta para público não técnico, explicação de risco ou priorização | `references/security-communication.md` |
+| Explicar uma vulnerabilidade (CVE, dependência, código ou configuração) | `references/vulnerability-standard.md` + `references/security-communication.md` |
 | "analisa esse log", "o que aconteceu ontem", "tem ataque aqui?" | `references/detection-playbook.md` + `scripts/log_triage.py` |
 | "postura", "hardening", "score de segurança", "drift", "auditar o servidor" | `references/hardening-linux.md` + `scripts/harden_check.py` |
 | "baseline", "comportamento anômalo", "beaconing", "correlacionar" | `references/behavioral-detection.md` |
@@ -117,6 +118,15 @@ Recomendação: próximo passo seguro + objetivo + risco da ação
 ```
 
 Ordene por severidade/confiança; um achado por fato. Separe confirmado, impacto possível e não verificado; não confunda correlação com causalidade. Declare cobertura/lacunas e fonte+data para fatos externos. Não chame mitigação de correção nem versão afetada de exploração confirmada.
+
+Para **vulnerabilidades** (CVE, dependência, falha no código, configuração insegura ou serviço exposto), use o padrão obrigatório de quatro blocos, nesta ordem:
+
+1. **O que é** — explicação simples, com o identificador e a fonte só depois.
+2. **Como ocorre** — condição necessária, parte afetada e exposição, sem tutorial de ataque.
+3. **Quais os impactos** — o que pode ser afetado e o que ainda não está confirmado.
+4. **Como prevenir ou remediar** — separe prevenção de remediação, com esforço, risco e rollback.
+
+Consulte `references/vulnerability-standard.md` para o modelo completo e os limites de linguagem.
 
 ## 7. Portão de ação
 
