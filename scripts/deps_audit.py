@@ -1329,13 +1329,22 @@ def update_command(package: Package, fixed: str | None) -> str | None:
     return None
 
 
+def _major_version(version: str | None) -> int | None:
+    parsed = _release_tuple(version) if version else None
+    return parsed[0] if parsed else None
+
+
 def hit_finding(hit: Hit, *, internet_exposed: bool, epss_threshold: float,
                 retrieved_at: str | None) -> dict[str, Any]:
     severity, rationale = hit_severity(hit, internet_exposed=internet_exposed,
                                        epss_threshold=epss_threshold)
     package = hit.package
     fixed = hit.fixed
-    command = update_command(package, fixed)
+    installed_major = _major_version(package.version)
+    fixed_major = _major_version(fixed)
+    major_jump = (installed_major is not None and fixed_major is not None
+                  and installed_major != fixed_major)
+    command = update_command(package, fixed) if not major_jump else None
     rollback = (f"reverter {package.source} para {package.name} {package.version} "
                 f"(git checkout -- {package.source})")
     identifier = hit.cve_id or hit.osv_id
@@ -1345,6 +1354,11 @@ def hit_finding(hit: Hit, *, internet_exposed: bool, epss_threshold: float,
     impact_parts = [hit.summary.rstrip(".") + "."]
     if fixed:
         impact_parts.append(f"Corrigido em {fixed}.")
+        if major_jump:
+            impact_parts.append(
+                "A correção disponível muda a versão principal; trate como upgrade "
+                "planejado, com teste e rollback."
+            )
     else:
         impact_parts.append("A fonte não informa versão corrigida.")
     if hit.kev:
@@ -1386,13 +1400,18 @@ def hit_finding(hit: Hit, *, internet_exposed: bool, epss_threshold: float,
     }
 
     recommendation: dict[str, Any] = {
-        "action": "patch",
+        "action": "investigate" if major_jump else "patch",
         "target": f"{package.name}@{fixed or 'corrigido'}",
         "rollback": rollback,
-        "requires_approval": True,
+        "requires_approval": not major_jump,
     }
     if command:
         recommendation["command"] = command
+    if major_jump:
+        recommendation["note"] = (
+            "A correção exige salto de versão principal; valide compatibilidade "
+            "e plano de upgrade antes de executar."
+        )
 
     return {
         "title": f"{identifier} em {package.name} {package.version}",
@@ -1408,9 +1427,11 @@ def hit_finding(hit: Hit, *, internet_exposed: bool, epss_threshold: float,
             "OSV casa pacote+versão; se o lockfile não reflete o deploy, "
             "a versão em produção pode divergir."
         ),
-        "not_observed": [] if fixed else [
+        "not_observed": ([
+            "o upgrade de versão principal não foi testado; confirme compatibilidade no aviso oficial"
+        ] if major_jump else ([
             "não foi possível determinar uma versão corrigida compatível com a versão instalada; confirme a faixa no aviso oficial"
-        ],
+        ] if not fixed else [])),
     }
 
 

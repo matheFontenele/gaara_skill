@@ -105,6 +105,8 @@ Ordem de decisão, não de execução:
 
 Ao recomendar uma versão corrigida, compare a versão instalada com os limites da **mesma faixa de lançamento** no registro OSV. Um advisory pode listar correções em vários ramos (por exemplo, `1.x`, `3.x` e `5.x`); não recomende uma correção de um ramo diferente, pois isso pode sugerir downgrade ou incompatibilidade. Se o comparador não entender o esquema da versão, deixe o destino sem especificar e peça conferência humana na fonte do fornecedor.
 
+Se a única correção disponível estiver em uma **versão principal diferente** (por exemplo, instalado `11.x`, corrigido apenas em `12.x`), não apresente o comando como atualização drop-in. Trate como upgrade planejado: mudanças incompatíveis, dependências, testes e rollback precisam ser avaliados antes.
+
 ### 4.4 Avaliar código e configuração
 
 ```bash

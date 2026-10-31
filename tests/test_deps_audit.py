@@ -288,6 +288,18 @@ class OsvFixedVersionTests(unittest.TestCase):
         self.assertEqual(da.extract_fixed(affected, "3.8.0"), "3.10.4")
         self.assertEqual(da.extract_fixed(affected, "1.29.0"), "1.30.3")
 
+    def test_cross_major_fix_is_not_presented_as_drop_in_patch(self) -> None:
+        package = da.Package("packagist", "laravel/framework", "11.46.1",
+                             "composer.lock", 1)
+        hit = da.Hit(package=package, osv_id="GHSA-x", cve_id="CVE-2026-0001",
+                     summary="x", fixed="12.68.0", cvss_score=9.8,
+                     cvss_source="OSV/CVSS")
+        finding = da.hit_finding(hit, internet_exposed=False,
+                                 epss_threshold=0.1, retrieved_at="2026-10-31T00:00:00Z")
+        self.assertEqual(finding["recommendation"]["action"], "investigate")
+        self.assertNotIn("command", finding["recommendation"])
+        self.assertIn("versão principal", finding["impact"])
+
     def test_refuses_ambiguous_versions_and_unaffected_branches(self) -> None:
         affected = {"ranges": [
             {"type": "ECOSYSTEM", "events": [{"introduced": "4.0.0"}, {"fixed": "5.6.0"}]},
